@@ -10,6 +10,7 @@ import Accueil from './pages/Accueil'
 import Article from './pages/Article'
 import Courses from './pages/Courses'
 import Detail from './pages/Detail'
+import Document from './pages/Document'
 import Global from './pages/Global'
 import Inflation from './pages/Inflation'
 import MeilleursPrix from './pages/MeilleursPrix'
@@ -90,6 +91,7 @@ export default function App() {
             <Route path="inflation" element={<Inflation />} />
             <Route path="article/:id" element={<Article />} />
             <Route path="parametres" element={<Parametres />} />
+            <Route path="doc/:slug" element={<Document />} />
             <Route path="*" element={<Accueil />} />
           </Route>
         </Routes>

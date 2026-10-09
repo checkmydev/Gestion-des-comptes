@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "import-excel": "node scripts/import-excel.mjs",
     "push-prices": "node scripts/push-prices.mjs",
-    "icons": "node scripts/make-icons.mjs"
+    "icons": "node scripts/make-icons.mjs",
+    "publish-doc": "node scripts/publish-doc.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

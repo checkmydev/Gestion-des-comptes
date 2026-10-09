@@ -27,6 +27,16 @@ Une notice illustrée pour Papa (scénario d'une journée type) est publiée ave
 depuis le bouton **?** de l'application. Les captures (`public/notice/`) sont faites avec des données
 de démonstration fictives : le dépôt est public, on n'y met jamais de vraies captures.
 
+## Pages privées (points sur les dépenses)
+
+Les analyses faites pour Papa sont des pages HTML conservées dans `Documents/` (hors dépôt) et publiées
+dans la table `comptes.documents`, protégée par RLS. L'application les affiche à l'adresse
+`…/Gestion-des-comptes/#/doc/<slug>`, uniquement après connexion. Aucun bouton n'y mène.
+
+```bash
+npm run publish-doc -- point-octobre-2026 "Point dépenses — octobre 2026" "Documents/Point dépenses octobre 2026.html"
+```
+
 ## Mise en place (une seule fois)
 
 ### 1. Supabase

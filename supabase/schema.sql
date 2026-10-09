@@ -178,6 +178,20 @@ create table price_references (
 create index price_references_item_idx on price_references (item_id, observed_on);
 
 -- ---------------------------------------------------------------------------
+-- Pages privées (points sur les dépenses…) affichées à l'adresse #/doc/<slug>,
+-- uniquement pour leur propriétaire connecté. Jamais dans le dépôt public.
+-- ---------------------------------------------------------------------------
+create table documents (
+  id         bigint generated always as identity primary key,
+  user_id    uuid not null default auth.uid() references auth.users on delete cascade,
+  slug       text not null check (slug ~ '^[a-z0-9-]+$'),
+  title      text not null,
+  html       text not null,
+  updated_at timestamptz not null default now(),
+  unique (user_id, slug)
+);
+
+-- ---------------------------------------------------------------------------
 -- Vue : total par catégorie et par mois (alimente le Global et les stats)
 -- security_invoker => les règles RLS des tables sous-jacentes s'appliquent.
 -- ---------------------------------------------------------------------------
@@ -221,7 +235,7 @@ begin
   foreach t in array array[
     'categories', 'items', 'stores', 'purchases', 'months', 'monthly_lines',
     'annual_provisions', 'annual_payments', 'user_settings', 'savings_movements',
-    'fuel_fills', 'trips', 'price_references'
+    'fuel_fills', 'trips', 'price_references', 'documents'
   ] loop
     execute format('alter table %I enable row level security', t);
     execute format(
