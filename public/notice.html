@@ -249,7 +249,7 @@
             <li>trait <strong style="color:#2a78d6">bleu</strong> : une facture annuelle arrive bientôt, il faut la prévoir.</li>
           </ul>
           <p>Plus bas, une barre par catégorie montre ce qui est dépensé par rapport au budget.</p>
-          <p>Les trois boutons du haut mènent directement à la <strong>saisie</strong>, à la <strong>liste de courses</strong> et aux <strong>meilleurs prix</strong> (étape 3).</p>
+          <p>Les boutons du haut mènent directement à la <strong>saisie</strong>, à la <strong>liste de courses</strong>, au <strong>scan d'un ticket de caisse</strong> (étape 4) et aux <strong>meilleurs prix</strong> (étape 3).</p>
         </div>
         <figure class="phone"><img src="./notice/02-accueil.webp" alt="Accueil : dépenses courantes, solde de fin de mois, épargne, dépenses annuelles" loading="lazy" width="390" height="780" /><figcaption>Le résumé du mois</figcaption></figure>
         <figure class="phone"><img src="./notice/03-accueil-alertes.webp" alt="Alertes et barres de budget par catégorie" loading="lazy" width="390" height="780" /><figcaption>Les alertes et les barres par catégorie</figcaption></figure>
@@ -297,7 +297,29 @@
     <!-- 4 ------------------------------------------------------------------ -->
     <section class="chapter" id="saisie">
       <div class="chapter-head"><span class="num">4</span><h2 class="chapter-title">Encoder ses achats</h2></div>
-      <p class="moment">Au magasin, ticket de caisse en main. Exemple : des bananes achetées au Lidl.</p>
+      <p class="moment">Au magasin ou de retour à la maison, ticket de caisse en main.</p>
+
+      <div class="step duo">
+        <div>
+          <h3>Le plus rapide : scanner le ticket</h3>
+          <p>Touchez <span class="ui">📷 Scanner un ticket de caisse</span>, en haut de la Saisie ou sur l'accueil, puis <span class="ui">Prendre une photo</span>. Posez le ticket bien à plat et photographiez-le en entier.</p>
+          <p>Après une vingtaine de secondes, l'application affiche ce qu'elle a lu : le <strong>magasin</strong>, la <strong>date</strong> et <strong>chaque article</strong>, déjà rangé dans ses catégories. Les réductions (Lidl Plus, promos) sont déduites, et les fruits et légumes pesés gardent leur poids et leur prix au kilo.</p>
+          <p><strong>Vérifiez chaque ligne</strong> : touchez un nom, une catégorie ou un montant pour le corriger, et décochez ce qui ne doit pas être enregistré. Une ligne encadrée en jaune, avec la mention « à vérifier », était difficile à lire.</p>
+        </div>
+        <figure class="phone"><img src="./notice/22-ticket-photo.webp" alt="Écran Scanner un ticket : bouton Prendre une photo" loading="lazy" width="390" height="780" /><figcaption>Prendre la photo</figcaption></figure>
+        <figure class="phone"><img src="./notice/23-ticket-verif.webp" alt="Lignes lues sur le ticket, modifiables" loading="lazy" width="390" height="780" /><figcaption>Vérifier les lignes lues</figcaption></figure>
+      </div>
+
+      <div class="step">
+        <div>
+          <h3>Contrôler le total, puis enregistrer</h3>
+          <p>En bas, l'application compare la somme des lignes avec le <strong>total imprimé sur le ticket</strong>. « ✓ Le total correspond au ticket » : tout est bon. Si un écart s'affiche, une ligne manque ou est mal lue : corrigez-la.</p>
+          <p>Touchez enfin <span class="ui">Enregistrer</span>. Les achats sont comptés dans le mois de la date du ticket. La photo n'est pas conservée.</p>
+          <p class="tip"><strong>Ticket très long ?</strong>Photographiez-le en deux fois et faites deux scans.</p>
+          <p>Vous préférez taper vous-même, ou vous n'avez pas de ticket ? Voici la saisie <strong>article par article</strong>, avec l'exemple de bananes achetées au Lidl.</p>
+        </div>
+        <figure class="phone"><img src="./notice/24-ticket-total.webp" alt="Contrôle du total : le total correspond au ticket" loading="lazy" width="390" height="780" /></figure>
+      </div>
 
       <div class="step">
         <div>
@@ -470,10 +492,18 @@
       <div class="chapter-head"><span class="num">9</span><h2 class="chapter-title">Demander à l'assistant</h2></div>
       <p class="moment">Une question sur vos dépenses, ou envie de savoir où un produit est le moins cher ?</p>
 
-      <div class="step" style="grid-template-columns: 1fr">
+      <div class="step duo">
         <div>
           <h3>Ouvrir l'assistant</h3>
-          <p>Touchez la <strong>bulle verte</strong> en bas à droite de l'écran. Écrivez votre question comme vous la diriez, puis touchez <span class="ui">Envoyer</span>.</p>
+          <p>Touchez la <strong>bulle verte</strong> en bas à droite de l'écran. Écrivez votre question comme vous la diriez, ou touchez une des questions proposées, puis <span class="ui">Envoyer</span>.</p>
+          <p>Pendant qu'il travaille, une <strong>pièce qui tourne</strong> et des petits messages vous disent où il en est : « Je consulte vos comptes… », « Je compare les magasins… ».</p>
+        </div>
+        <figure class="phone"><img src="./notice/25-assistant.webp" alt="Assistant : questions proposées" loading="lazy" width="390" height="780" /><figcaption>Les questions proposées</figcaption></figure>
+        <figure class="phone"><img src="./notice/26-assistant-attente.webp" alt="Assistant en train de chercher, avec une pièce animée" loading="lazy" width="390" height="780" /><figcaption>Il cherche…</figcaption></figure>
+      </div>
+
+      <div class="step">
+        <div>
           <h3>Ce qu'on peut lui demander</h3>
           <ul>
             <li><strong>Sur vos comptes</strong> : « Combien ai-je dépensé ce mois-ci ? », « Combien pour les restos depuis le printemps ? », « Quelles factures annuelles dois-je encore prévoir ? ». Il lit vos comptes pour répondre.</li>
@@ -481,9 +511,12 @@
             <li><strong>Des conseils</strong> : « Sur quoi pourrais-je faire des économies ? ».</li>
           </ul>
           <p>Si l'assistant trouve des prix intéressants, demandez-lui « <em>enregistre ces prix</em> » : ils apparaîtront dans <span class="ui">Meilleurs prix</span>.</p>
+          <p><strong>Il retient vos préférences.</strong> Dites-lui par exemple « je préfère les montants sans centimes » ou « je fais mes courses le mardi » : il s'en souviendra les fois suivantes. Pour qu'il oublie, dites-le-lui simplement.</p>
+          <p><strong>Vos remarques sont vérifiées.</strong> Si vous lui dites « il manque mes œufs du 4 octobre » ou « ce montant est faux », il regarde dans vos comptes et vous explique ce qu'il trouve.</p>
           <p class="tip"><strong>Patience pour les prix</strong>Une question sur vos comptes prend quelques secondes. Une recherche de prix sur internet peut prendre <strong>une à deux minutes</strong> : laissez l'écran ouvert. Certains magasins (Colruyt, Aldi) n'affichent pas tous leurs prix en ligne ; l'assistant vous le dira.</p>
           <p class="note"><strong>Il peut se tromper</strong>Vérifiez les prix en magasin. Et si l'assistant remarque quelque chose d'anormal dans l'application (un total qui ne colle pas, un article en double…), il le signale automatiquement pour que ce soit corrigé, et vous le dit.</p>
         </div>
+        <figure class="phone"><img src="./notice/27-assistant-reponse.webp" alt="Réponse de l'assistant : où acheter les bananes le moins cher" loading="lazy" width="390" height="780" /><figcaption>La réponse, avec ses sources</figcaption></figure>
       </div>
     </section>
 

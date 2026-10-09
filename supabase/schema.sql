@@ -209,6 +209,16 @@ create table app_reports (
 );
 
 -- ---------------------------------------------------------------------------
+-- Mémoire de l'assistant (préférences et remarques durables de l'utilisateur)
+-- ---------------------------------------------------------------------------
+create table assistant_memory (
+  id         bigint generated always as identity primary key,
+  user_id    uuid not null default auth.uid() references auth.users on delete cascade,
+  created_at timestamptz not null default now(),
+  note       text not null
+);
+
+-- ---------------------------------------------------------------------------
 -- Vue : total par catégorie et par mois (alimente le Global et les stats)
 -- security_invoker => les règles RLS des tables sous-jacentes s'appliquent.
 -- ---------------------------------------------------------------------------
@@ -252,7 +262,7 @@ begin
   foreach t in array array[
     'categories', 'items', 'stores', 'purchases', 'months', 'monthly_lines',
     'annual_provisions', 'annual_payments', 'user_settings', 'savings_movements',
-    'fuel_fills', 'trips', 'price_references', 'documents', 'app_reports'
+    'fuel_fills', 'trips', 'price_references', 'documents', 'app_reports', 'assistant_memory'
   ] loop
     execute format('alter table %I enable row level security', t);
     execute format(

@@ -61,6 +61,44 @@ function Formatted({ text }: { text: string }) {
   return <>{blocks}</>
 }
 
+const STEPS_DATA = [
+  'Je consulte vos comptes…',
+  'Je fais les additions…',
+  'Je compare avec les mois précédents…',
+  'Je prépare la réponse…',
+]
+const STEPS_PRICES = [
+  'Je regarde ce que vous payez d\'habitude…',
+  'Je cherche les prix sur les sites des magasins…',
+  'Je parcours les dépliants de la semaine…',
+  'Je compare les magasins…',
+  'Je vérifie les promotions…',
+  'Je prépare la réponse…',
+]
+
+/** Bulle d'attente animée : pièce qui tourne, points qui ondulent, étapes qui défilent. */
+function ThinkingBubble({ question }: { question: string }) {
+  const prices = /prix|cher|magasin|promo|achet|dépliant|meilleur/i.test(question)
+  const steps = prices ? STEPS_PRICES : STEPS_DATA
+  const [index, setIndex] = useState(0)
+  const [seconds, setSeconds] = useState(0)
+  useEffect(() => {
+    const step = window.setInterval(() => setIndex((i) => Math.min(i + 1, steps.length - 1)), prices ? 9000 : 3500)
+    const clock = window.setInterval(() => setSeconds((s) => s + 1), 1000)
+    return () => { window.clearInterval(step); window.clearInterval(clock) }
+  }, [prices, steps.length])
+  return (
+    <div className="bubble assistant thinking" role="status" aria-live="polite">
+      <div className="thinking-row">
+        <span className="thinking-coin" aria-hidden="true">€</span>
+        <span className="thinking-dots" aria-hidden="true"><i /><i /><i /></span>
+      </div>
+      <p key={index} className="thinking-step">{steps[index]}</p>
+      {seconds >= 20 && <p className="muted small" style={{ margin: 0 }}>Encore un instant… {seconds} s</p>}
+    </div>
+  )
+}
+
 /**
  * Assistant : répond aux questions sur les comptes et cherche les meilleurs prix
  * sur internet. Les échanges passent par la fonction serveur « comptes-assistant »
@@ -143,11 +181,7 @@ export default function Assistant() {
             )}
           </div>
         ))}
-        {busy && (
-          <div className="bubble assistant">
-            <p className="muted"><span className="dots" aria-hidden="true" /> L'assistant réfléchit… Une recherche de prix peut prendre une minute.</p>
-          </div>
-        )}
+        {busy && <ThinkingBubble question={[...messages].reverse().find((m) => m.role === 'user')?.content ?? ''} />}
         <div ref={endRef} />
       </div>
 

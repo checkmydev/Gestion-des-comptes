@@ -42,6 +42,8 @@ Règles :
 - N'enregistre des prix (outil enregistrer_prix_releves) que si l'utilisateur te le demande explicitement, ou après lui avoir proposé et obtenu son accord dans la conversation.
 - Montants en euros au format belge (1 234,56 €). Arrondis raisonnablement.
 - Tu peux conseiller (où acheter moins cher, quel poste surveiller), sans moraliser.
+- Quand l'utilisateur exprime une préférence ou une remarque durable (façon de présenter, habitudes, informations le concernant), enregistre-la avec l'outil retenir, puis respecte-la ; si elle devient fausse, utilise oublier. Ne promets jamais de te souvenir de quelque chose sans l'avoir enregistré. Les notes déjà mémorisées te sont données plus bas.
+- Quand l'utilisateur fait une remarque sur ses données (« il manque… », « ce montant est faux… »), vérifie toujours avec les outils avant de répondre, et explique ce que tu as trouvé.
 - Si une question révèle une incohérence de l'application elle-même (un total qui ne correspond pas, une donnée contradictoire ou dupliquée, un calcul faux, un écran qui ne fait pas ce qu'il devrait, une fonction qui manque vraiment), utilise l'outil signaler_probleme : décris précisément ce qui ne va pas, avec les chiffres et les périodes concernés, et une piste de correction. Dis ensuite à l'utilisateur, en une phrase, que le problème a été signalé pour être corrigé. Ne signale pas une simple question ou une préférence.`
 
 // ---------------------------------------------------------------------------
@@ -86,6 +88,16 @@ const TOOLS: Anthropic.Beta.BetaToolUnion[] = [
     name: 'depenses_annuelles_et_epargne',
     description: "Postes de dépenses annuelles d'une année (montants prévus, payés), plafond annuel, solde et derniers mouvements du compte épargne.",
     input_schema: { type: 'object', properties: { annee: { type: 'integer' } }, additionalProperties: false },
+  },
+  {
+    name: 'retenir',
+    description: "Mémorise durablement une préférence ou une information personnelle de l'utilisateur (ex. « montants sans centimes », « fait ses courses le mardi chez Lidl »). Relue à chaque conversation.",
+    input_schema: { type: 'object', properties: { note: { type: 'string', description: 'phrase courte et autonome' } }, required: ['note'], additionalProperties: false },
+  },
+  {
+    name: 'oublier',
+    description: "Supprime une note mémorisée devenue fausse ou que l'utilisateur ne veut plus (par son numéro).",
+    input_schema: { type: 'object', properties: { numero: { type: 'integer' } }, required: ['numero'], additionalProperties: false },
   },
   {
     name: 'signaler_probleme',
@@ -159,8 +171,38 @@ async function must<T>(q: PromiseLike<{ data: T | null; error: { message: string
 
 type Db = SupabaseClient<any, any, any> // client sur le schéma « comptes »
 
+/** Texte comparable : sans accents ni majuscules, œ → oe, æ → ae. */
+const norm = (s: string) => s.replace(/œ/gi, 'oe').replace(/æ/gi, 'ae')
+  .normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+
+/** Articles dont le nom (et la catégorie) contiennent le texte, à la manière d'une personne. */
+async function matchingItemIds(db: Db, texte?: string, categorie?: string): Promise<number[]> {
+  const items = await must(db.from('items').select('id, name, categories(name)')) as Record<string, any>[]
+  const t = texte ? norm(texte).replace(/s$/, '') : '' // « oeufs » trouve aussi « oeuf »
+  const c = categorie ? norm(categorie) : ''
+  return items
+    .filter((i) => (!t || norm(i.name).includes(t)) && (!c || norm(i.categories?.name ?? '').includes(c)))
+    .map((i) => i.id as number)
+}
+
+/** Préférences et remarques durables de l'utilisateur, relues à chaque question. */
+async function loadMemory(db: Db): Promise<{ id: number; note: string }[]> {
+  const { data } = await db.from('assistant_memory').select('id, note').order('created_at').limit(50)
+  return (data ?? []) as { id: number; note: string }[]
+}
+
 async function runTool(db: Db, name: string, input: Input, question: string): Promise<unknown> {
   switch (name) {
+    case 'retenir': {
+      const note = (str(input.note) ?? '').slice(0, 500)
+      if (!note) throw new Error('note vide')
+      const saved = await must(db.from('assistant_memory').insert({ note }).select('id').single()) as { id: number }
+      return { retenu: true, numero: saved.id }
+    }
+    case 'oublier': {
+      await must(db.from('assistant_memory').delete().eq('id', Number(input.numero)))
+      return { oublie: true }
+    }
     case 'signaler_probleme': {
       const type = ['bug', 'donnees', 'incoherence', 'amelioration'].includes(String(input.type)) ? String(input.type) : 'incoherence'
       const row = {
@@ -215,15 +257,17 @@ async function runTool(db: Db, name: string, input: Input, question: string): Pr
     }
     case 'chercher_achats': {
       const limite = Math.min(Math.max(Number(input.limite) || 50, 1), 200)
+      // Filtre texte / catégorie fait ici, insensible aux accents et à œ/oe (« oeufs » trouve « œufs »)
+      const ids = (str(input.texte) || str(input.categorie)) ? await matchingItemIds(db, str(input.texte), str(input.categorie)) : null
+      if (ids && !ids.length) return []
       let q = db.from('purchases')
-        .select('purchased_on, period, amount, units, quantity_g, price_per_kg, promo_pct, note, items!inner(name, categories!inner(name)), stores(name)')
+        .select('purchased_on, period, amount, units, quantity_g, price_per_kg, promo_pct, note, items(name, categories(name)), stores(name)')
         .order('purchased_on', { ascending: false, nullsFirst: false }).limit(limite)
-      if (str(input.texte)) q = q.ilike('items.name', `%${str(input.texte)}%`)
-      if (str(input.categorie)) q = q.ilike('items.categories.name', `%${str(input.categorie)}%`)
+      if (ids) q = q.in('item_id', ids.slice(0, 300))
       if (isDate(str(input.depuis))) q = q.gte('purchased_on', str(input.depuis)!)
       if (isDate(str(input.jusqua))) q = q.lte('purchased_on', str(input.jusqua)!)
       let rows = await must(q) as Record<string, any>[]
-      if (str(input.magasin)) rows = rows.filter((r) => (r.stores?.name ?? '').toLowerCase().includes(str(input.magasin)!.toLowerCase()))
+      if (str(input.magasin)) rows = rows.filter((r) => norm(r.stores?.name ?? '').includes(norm(str(input.magasin)!)))
       return rows.map((r) => ({
         date: r.purchased_on, mois: r.period, article: r.items?.name, categorie: r.items?.categories?.name, magasin: r.stores?.name ?? null,
         montant: Number(r.amount), nombre: r.units ?? 1, quantite_g: r.quantity_g, prix_kg: r.price_per_kg, promo_pct: r.promo_pct, note: r.note,
@@ -231,7 +275,10 @@ async function runTool(db: Db, name: string, input: Input, question: string): Pr
     }
     case 'historique_prix': {
       const article = str(input.article) ?? ''
-      const items = await must(db.from('items').select('id, name, categories(name, weighed)').ilike('name', `%${article}%`).limit(10)) as Record<string, any>[]
+      const matched = await matchingItemIds(db, article, undefined)
+      const items = matched.length
+        ? await must(db.from('items').select('id, name, categories(name, weighed)').in('id', matched.slice(0, 10))) as Record<string, any>[]
+        : []
       if (!items.length) return { message: `Aucun article ne correspond à « ${article} ».` }
       const ids = items.map((i) => i.id)
       const [purchases, refs] = await Promise.all([
@@ -272,7 +319,6 @@ async function runTool(db: Db, name: string, input: Input, question: string): Pr
     case 'enregistrer_prix_releves': {
       const list = Array.isArray(input.prix) ? input.prix as Record<string, unknown>[] : []
       const items = await must(db.from('items').select('id, name')) as { id: number; name: string }[]
-      const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
       const rows = []
       const inconnus: string[] = []
       for (const p of list) {
@@ -329,6 +375,10 @@ Deno.serve(async (req: Request) => {
   const messages: Anthropic.Beta.BetaMessageParam[] = history.map((m) => ({ role: m.role, content: m.content }))
   const today = new Date().toLocaleDateString('fr-BE', { timeZone: 'Europe/Brussels', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const sources = new Map<string, string>()
+  const memory = await loadMemory(db)
+  const memoryText = memory.length
+    ? `Notes mémorisées sur l'utilisateur (à respecter) :\n${memory.map((m) => `- n°${m.id} : ${m.note}`).join('\n')}`
+    : "Aucune note mémorisée pour l'instant."
   const usage = { input: 0, output: 0, cache_read: 0, web_searches: 0 }
 
   try {
@@ -341,7 +391,7 @@ Deno.serve(async (req: Request) => {
         output_config: { effort: 'medium' },
         system: [
           { type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } },
-          { type: 'text', text: `Aujourd'hui : ${today}. Mois comptable en cours : ${currentPeriod()}.` },
+          { type: 'text', text: `Aujourd'hui : ${today}. Mois comptable en cours : ${currentPeriod()}.\n\n${memoryText}` },
         ],
         tools: TOOLS,
         messages,
