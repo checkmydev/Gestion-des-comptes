@@ -1,0 +1,11 @@
+node_modules
+dist
+
+# Secrets locaux (clés Supabase, identifiants pour push-prices)
+.env
+.env.local
+
+# Données personnelles : le dépôt GitHub Pages est public, elles n'y vont jamais.
+Documents/
+supabase/seed.sql
+prix*.json

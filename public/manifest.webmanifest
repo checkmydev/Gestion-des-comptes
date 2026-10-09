@@ -1,0 +1,23 @@
+{
+  "id": "./",
+  "name": "Comptes privés",
+  "short_name": "Comptes",
+  "description": "Suivi des dépenses courantes, budget et évolution des prix",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f9f9f7",
+  "theme_color": "#1f6f5c",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Encoder une dépense", "short_name": "Saisie", "url": "./#/saisie", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
+  ]
+}
