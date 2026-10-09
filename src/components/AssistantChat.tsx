@@ -248,7 +248,12 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
       const { data } = await supabase.from('assistant_conversations')
         .select(CONVERSATION_FIELDS).order('updated_at', { ascending: false }).limit(1)
       const row = (data as ConversationRow[] | null)?.[0]
-      if (cancelled || !row || startedNewRef.current || busyRef.current) return
+      if (cancelled || startedNewRef.current || busyRef.current) return
+      if (!row) {
+        // Plus aucune conversation en base (effacées ailleurs) : la copie locale disparaît aussi.
+        if (loadCurrentId() !== null) { setConversationId(null); setMessages([]); setSummary({ resume: null, count: 0 }); setSyncedAt(null) }
+        return
+      }
       show(row)
     }
     const photo = takePendingPhoto()
@@ -312,6 +317,14 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
     if (error) { alert("La conversation n'a pas pu être supprimée. Vérifiez la connexion internet."); return }
     setPast((p) => p?.filter((x) => x.id !== c.id) ?? null)
     if (c.id === conversationId) startNew()
+  }
+
+  async function removeAll() {
+    if (!confirm('Effacer toutes les conversations avec l\'assistant ? Vos comptes ne sont pas touchés.')) return
+    const { error } = await supabase.from('assistant_conversations').delete().gt('id', 0)
+    if (error) { alert("Les conversations n'ont pas pu être effacées. Vérifiez la connexion internet."); return }
+    setPast([])
+    startNew()
   }
 
   function startNew() {
@@ -463,7 +476,10 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
             ))}
           </div>
         )}
-        <p className="muted small">Les conversations sont gardées sur votre compte : vous les retrouvez sur tous vos appareils.</p>
+        <p className="muted small">Les conversations sont gardées sur votre compte : vous les retrouvez sur tous vos appareils. Elles ne s'effacent pas toutes seules : supprimez-les ici quand vous le souhaitez.</p>
+        {past && past.length > 0 && (
+          <button className="btn btn-danger" onClick={() => void removeAll()}>🗑 Effacer toutes les conversations</button>
+        )}
       </div>
     )
   }
