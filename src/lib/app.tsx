@@ -26,18 +26,11 @@ interface AppState {
 
 const Ctx = createContext<AppState | null>(null)
 
-const PERIOD_KEY = 'comptes.period'
-
-function readStoredPeriod(): string {
-  try {
-    const p = sessionStorage.getItem(PERIOD_KEY)
-    if (p && /^\d{4}-\d{2}-01$/.test(p)) return p
-  } catch { /* stockage indisponible */ }
-  return currentPeriod()
-}
-
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [period, setPeriodState] = useState(readStoredPeriod)
+  // L'application s'ouvre toujours sur le mois en cours (qui commence le 26).
+  const [period, setPeriodState] = useState(() => currentPeriod())
+  // Tant que l'utilisateur n'a pas choisi un autre mois, on suit le mois en cours.
+  const [followCurrent, setFollowCurrent] = useState(true)
   const [categories, setCategories] = useState<Category[]>([])
   const [items, setItems] = useState<Item[]>([])
   const [stores, setStores] = useState<Store[]>([])
@@ -47,8 +40,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setPeriod = useCallback((p: string) => {
     setPeriodState(p)
-    try { sessionStorage.setItem(PERIOD_KEY, p) } catch { /* ignoré */ }
+    setFollowCurrent(p === currentPeriod())
   }, [])
+
+  // Passage automatique au mois suivant le 26, même si l'application est restée
+  // ouverte (GSM en veille) : vérifié au retour dans l'application et chaque minute.
+  useEffect(() => {
+    if (!followCurrent) return
+    const sync = () => setPeriodState((p) => (p === currentPeriod() ? p : currentPeriod()))
+    const timer = window.setInterval(sync, 60_000)
+    document.addEventListener('visibilitychange', sync)
+    window.addEventListener('focus', sync)
+    sync()
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', sync)
+      window.removeEventListener('focus', sync)
+    }
+  }, [followCurrent])
 
   const reload = useCallback(async () => {
     try {

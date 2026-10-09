@@ -1,5 +1,5 @@
 import type { Ledger } from './api'
-import { addMonths } from './period'
+import { addMonths, currentPeriod, cycleDays } from './period'
 
 export interface MonthSummary {
   period: string
@@ -76,17 +76,15 @@ export function categoryAverage(ledger: Ledger, categoryId: number, period: stri
 }
 
 /**
- * Part du mois qui reste à venir : 0 pour un mois terminé, 1 pour un mois
- * futur, entre les deux pour le mois en cours.
+ * Part du mois comptable (du 26 au 25) qui reste à venir : 0 pour un mois
+ * terminé, 1 pour un mois futur, entre les deux pour le mois en cours.
  */
 export function remainingShare(period: string, today = new Date()): number {
-  const [y, m] = period.split('-').map(Number)
-  const current = today.getFullYear() * 12 + today.getMonth()
-  const target = y * 12 + (m - 1)
-  if (target < current) return 0
-  if (target > current) return 1
-  const daysInMonth = new Date(y, m, 0).getDate()
-  return (daysInMonth - today.getDate()) / daysInMonth
+  const current = currentPeriod(today)
+  if (period < current) return 0
+  if (period > current) return 1
+  const { total, left } = cycleDays(period, today)
+  return (left - 1) / total
 }
 
 /**

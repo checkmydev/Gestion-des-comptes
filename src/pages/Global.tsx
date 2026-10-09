@@ -6,7 +6,7 @@ import { deleteRow, ensureMonth, loadLedger, saveRow, setOpeningBalance, type Le
 import { useApp } from '../lib/app'
 import { budgetStatus, categoryAverage, categoryTotal, projectSpending, remainingShare, summarize } from '../lib/budget'
 import { eur } from '../lib/format'
-import { addMonths, periodLabel } from '../lib/period'
+import { addMonths, cycleLabel, periodLabel } from '../lib/period'
 import type { MonthlyLine, Section } from '../lib/types'
 import { AnnualTab, FuelTab, SavingsTab } from './GlobalTabs'
 
@@ -108,7 +108,10 @@ function MonthTab({ openForm }: { openForm: (f: FormSpec) => void }) {
 
   return (
     <>
-      <h1 className="capitalize">Global — {periodLabel(period)}</h1>
+      <div>
+        <h1 className="capitalize">Global — {periodLabel(period)}</h1>
+        <div className="muted small">{cycleLabel(period)}</div>
+      </div>
 
       <section className="card">
         <h2>Rentrées</h2>

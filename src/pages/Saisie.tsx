@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PurchaseForm } from '../components/PurchaseForm'
 import { useApp } from '../lib/app'
 import { eur } from '../lib/format'
-import { periodLabel } from '../lib/period'
+import { currentPeriod, cycleLabel, periodLabel } from '../lib/period'
 import type { Category, Item, Purchase } from '../lib/types'
 
 type Step = 'category' | 'item' | 'details' | 'again' | 'consult'
@@ -72,8 +72,8 @@ export default function Saisie() {
       </div>
 
       <div className="small ink2">
-        Mois comptable : <strong className="capitalize">{periodLabel(period)}</strong>
-        <span className="muted"> (à changer en haut de l'écran)</span>
+        Chaque achat est compté d'après la date du ticket : le mois commence le 26.
+        <span className="muted"> Mois en cours : <span className="capitalize">{periodLabel(currentPeriod())}</span> ({cycleLabel(currentPeriod())}).</span>
       </div>
 
       {step === 'category' && (

@@ -17,7 +17,7 @@ export const DEFAULT_CATEGORIES: Partial<Category>[] = [
   { name: 'Viande & jambon' },
   { name: 'Œufs' },
   { name: 'Médocs & toubibs' },
-  { name: 'Divers', track_inflation: true },
+  { name: 'Divers', track_inflation: true, counted: true },
   { name: 'Restos & sorties' },
   { name: 'Frais extra' },
 ]
@@ -38,6 +38,7 @@ export default function Parametres() {
       { key: 'name', label: 'Nom', type: 'text', required: true },
       { key: 'monthly_budget', label: 'Budget mensuel (€)', type: 'amount', hint: 'facultatif' },
       { key: 'weighed', label: 'Colonnes Quantité / €/kg / Promo', type: 'checkbox' },
+      { key: 'counted', label: 'Colonne Nombre (1 par défaut)', type: 'checkbox' },
       { key: 'track_inflation', label: 'Inclure dans les statistiques d\'inflation', type: 'checkbox' },
       ...(c ? [{ key: 'archived', label: 'Archivée (masquée de la saisie)', type: 'checkbox' as const }] : []),
     ],
@@ -116,7 +117,7 @@ export default function Parametres() {
               <button className="btn-ghost grow" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 0, padding: 0, color: 'var(--ink)' }} onClick={() => editCategory(c)}>
                 <span className={c.archived ? 'muted' : ''}>{c.name}</span>
                 <span className="muted small">
-                  {[c.weighed && '€/kg', c.track_inflation && 'inflation', c.monthly_budget && `budget ${eur(c.monthly_budget)}`, c.archived && 'archivée'].filter(Boolean).join(' · ')}
+                  {[c.weighed && '€/kg', c.counted && 'nombre', c.track_inflation && 'inflation', c.monthly_budget && `budget ${eur(c.monthly_budget)}`, c.archived && 'archivée'].filter(Boolean).join(' · ')}
                 </span>
               </button>
               <button className="btn-ghost" aria-label="Monter" disabled={i === 0} onClick={() => move(c, -1)}>↑</button>

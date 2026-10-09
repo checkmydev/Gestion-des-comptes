@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { deleteRow, lastPurchaseOf, saveRow } from '../lib/api'
 import { useApp } from '../lib/app'
 import { eur, num, parseAmount, storeDate, todayIso } from '../lib/format'
+import { cycleLabel, periodForDate, periodLabel } from '../lib/period'
 import type { Category, Item, Purchase } from '../lib/types'
 
 const NEW_STORE = '__new__'
@@ -38,8 +39,9 @@ export function PurchaseForm({ category, item, period, purchase, defaultStoreId,
   const [amount, setAmount] = useState(txt(purchase?.amount))
   const [amountTouched, setAmountTouched] = useState(Boolean(purchase))
   const [note, setNote] = useState(purchase?.note ?? '')
-  const [units, setUnits] = useState(txt(purchase?.units))
-  const [unitsAuto, setUnitsAuto] = useState(false)
+  const [units, setUnits] = useState(purchase?.units != null ? txt(purchase.units) : category.counted ? '1' : '')
+  // « 1 » par défaut ou rempli par 2*3,25 : peut être remplacé automatiquement
+  const [unitsAuto, setUnitsAuto] = useState(purchase?.units == null)
   const [last, setLast] = useState<Purchase | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -55,6 +57,12 @@ export function PurchaseForm({ category, item, period, purchase, defaultStoreId,
     () => computeAmount(parseAmount(qty), parseAmount(ppk), parseAmount(promo)),
     [qty, ppk, promo],
   )
+
+  // Mois comptable déduit de la date du ticket (le mois commence le 26).
+  // Un achat existant garde son mois tant que sa date n'est pas modifiée.
+  const targetPeriod = purchase && date === purchase.purchased_on
+    ? purchase.period
+    : date ? periodForDate(date) : purchase?.period ?? period
 
   // Nombre d'unités (articles à la pièce) et prix unitaire affiché en aide
   const unitCount = Math.max(1, Math.round(parseAmount(units) ?? 1))
@@ -79,7 +87,7 @@ export function PurchaseForm({ category, item, period, purchase, defaultStoreId,
         sid = (await ensureStore(newStore)).id
       }
       const row = {
-        period: purchase?.period ?? period,
+        period: targetPeriod,
         item_id: item.id,
         store_id: sid,
         purchased_on: date || null,
@@ -135,6 +143,9 @@ export function PurchaseForm({ category, item, period, purchase, defaultStoreId,
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
       </div>
+      <p className="small" style={{ margin: '-8px 0 0', color: targetPeriod === period ? 'var(--muted)' : 'var(--ink)' }}>
+        Compté en <strong className="capitalize">{periodLabel(targetPeriod)}</strong> ({cycleLabel(targetPeriod)})
+      </p>
       {storeId === NEW_STORE && (
         <label className="field">
           Nom du nouveau magasin
@@ -159,7 +170,7 @@ export function PurchaseForm({ category, item, period, purchase, defaultStoreId,
         </div>
       )}
 
-      <div className={category.weighed ? '' : 'grid2'} style={category.weighed ? undefined : { gridTemplateColumns: '2fr 1fr' }}>
+      <div className={category.counted ? 'grid2' : ''} style={category.counted ? { gridTemplateColumns: '2fr 1fr' } : undefined}>
         <label className="field">
           Montant payé (€)
           <input
@@ -171,15 +182,15 @@ export function PurchaseForm({ category, item, period, purchase, defaultStoreId,
               setAmountTouched(true)
               // « 2*3,25 » : 2 unités à 3,25 € → le nombre se remplit tout seul
               const m = e.target.value.replace(/\s/g, '').match(/^(\d{1,2})\*\d+(?:[.,]\d+)?$/)
-              if (m && !category.weighed && (!units || unitsAuto)) { setUnits(m[1]); setUnitsAuto(true) }
+              if (m && !category.weighed && unitsAuto) setUnits(m[1])
             }}
             style={{ fontSize: '1.3rem', fontWeight: 700 }}
           />
         </label>
-        {!category.weighed && (
+        {category.counted && (
           <label className="field">
             Nombre
-            <input inputMode="numeric" value={units} placeholder="1"
+            <input inputMode="numeric" value={units} placeholder="1" onFocus={(e) => e.target.select()}
               onChange={(e) => { setUnits(e.target.value); setUnitsAuto(false) }}
               style={{ fontSize: '1.3rem', fontWeight: 700, textAlign: 'center' }} />
           </label>

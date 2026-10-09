@@ -3,7 +3,7 @@ import { Loading } from '../components/Layout'
 import { deleteRow, insertRow, must, saveRow } from '../lib/api'
 import { useApp } from '../lib/app'
 import { eur, longDate, MONTHS, num, shortDate, todayIso } from '../lib/format'
-import { parsePeriod, periodLabel } from '../lib/period'
+import { parsePeriod, periodForDate, periodLabel } from '../lib/period'
 import { supabase } from '../lib/supabase'
 import type { AnnualPayment, AnnualProvision, FuelFill, SavingsMovement, Trip } from '../lib/types'
 import type { FormSpec } from './Global'
@@ -60,7 +60,8 @@ export function FuelTab({ openForm }: TabProps) {
       { key: 'total', label: 'Total payé (€)', type: 'amount', required: true },
     ],
     initial: f ?? { filled_on: todayIso(), station: stations[stations.length - 1] ?? '' },
-    onSave: async (v) => { await saveRow('fuel_fills', { ...v, period }, f?.id); await refresh() },
+    // le plein est compté dans le mois de sa date (le mois commence le 26)
+    onSave: async (v) => { await saveRow('fuel_fills', { ...v, period: v.filled_on ? periodForDate(String(v.filled_on)) : period }, f?.id); await refresh() },
     onDelete: f ? async () => { await deleteRow('fuel_fills', f.id); await refresh() } : undefined,
   })
 
@@ -72,7 +73,7 @@ export function FuelTab({ openForm }: TabProps) {
       { key: 'km_round_trip', label: 'Km aller-retour', type: 'number', required: true },
     ],
     initial: t ?? { trip_date: todayIso() },
-    onSave: async (v) => { await saveRow('trips', { ...v, period }, t?.id); await refresh() },
+    onSave: async (v) => { await saveRow('trips', { ...v, period: v.trip_date ? periodForDate(String(v.trip_date)) : period }, t?.id); await refresh() },
     onDelete: t ? async () => { await deleteRow('trips', t.id); await refresh() } : undefined,
   })
 
@@ -157,11 +158,11 @@ export function AnnualTab({ openForm }: TabProps) {
   const provisions = data.provisions.filter((p) => p.year === year)
   const lastYear = data.provisions.filter((p) => p.year === year - 1)
   const paidBy = (id: number, inMonth = false) => data.payments
-    .filter((x) => x.provision_id === id && (!inMonth || x.paid_on.slice(0, 7) === period.slice(0, 7)))
+    .filter((x) => x.provision_id === id && (!inMonth || periodForDate(x.paid_on) === period))
     .reduce((a, x) => a + Number(x.amount), 0)
   const estimated = provisions.reduce((a, p) => a + Number(p.annual_amount), 0)
   const paidYear = data.payments.reduce((a, x) => a + Number(x.amount), 0)
-  const paidMonth = data.payments.filter((x) => x.paid_on.slice(0, 7) === period.slice(0, 7)).reduce((a, x) => a + Number(x.amount), 0)
+  const paidMonth = data.payments.filter((x) => periodForDate(x.paid_on) === period).reduce((a, x) => a + Number(x.amount), 0)
   const remainingBudget = settings.annual_budget - paidYear
   const upcoming = provisions.filter((p) => p.due_month != null && p.due_month >= month && paidBy(p.id) < Number(p.annual_amount))
 

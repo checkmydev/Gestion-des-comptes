@@ -5,7 +5,7 @@ import { loadLedger, loadPurchasesSince, loadReferencesSince, type Ledger } from
 import { useApp } from '../lib/app'
 import { categoryAverage, categoryTotal } from '../lib/budget'
 import { eur, todayIso } from '../lib/format'
-import { currentPeriod, periodLabel } from '../lib/period'
+import { currentPeriod, cycleDays, cycleLabel, periodLabel } from '../lib/period'
 import { planShopping, type Suggestion } from '../lib/shopping'
 import type { PriceReference, Purchase } from '../lib/types'
 import { CoursesTabs } from './MeilleursPrix'
@@ -40,9 +40,8 @@ export default function Courses() {
       .catch((e) => setError((e as Error).message))
   }, [])
 
-  const d = new Date()
-  const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
-  const daysLeft = daysInMonth - d.getDate() + 1
+  // Mois comptable : du 26 au 25
+  const { total: daysInMonth, left: daysLeft } = cycleDays(period)
   const horizonDays = horizon === 'mois' ? daysLeft : Math.min(7, daysLeft)
 
   const plans = useMemo(() => {
@@ -105,7 +104,7 @@ export default function Courses() {
       <h1>Liste de courses</h1>
       <p className="muted small">
         Proposée d'après les achats des 6 derniers mois : articles réguliers dont le délai habituel est atteint,
-        dans la limite du budget restant de {periodLabel(period)} (budget fixé ou, à défaut, moyenne des 3 derniers mois).
+        dans la limite du budget restant de {periodLabel(period)}, {cycleLabel(period)} (budget fixé ou, à défaut, moyenne des 3 derniers mois).
       </p>
 
       <div className="card stack" style={{ gap: 10 }}>

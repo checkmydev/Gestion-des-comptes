@@ -5,6 +5,8 @@ export interface Category {
   name: string
   sort_order: number
   weighed: boolean
+  /** Colonne « Nombre » (1 par défaut) dans la saisie et le détail. */
+  counted: boolean
   track_inflation: boolean
   archived: boolean
   monthly_budget: number | null

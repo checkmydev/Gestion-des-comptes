@@ -6,7 +6,7 @@ import { loadLedger, must, type Ledger } from '../lib/api'
 import { useApp } from '../lib/app'
 import { budgetStatus, categoryAverage, projectSpending, remainingShare, summarize } from '../lib/budget'
 import { eur, MONTHS, pct } from '../lib/format'
-import { addMonths, parsePeriod, periodLabel } from '../lib/period'
+import { addMonths, parsePeriod, cycleLabel, periodLabel } from '../lib/period'
 import { supabase } from '../lib/supabase'
 import type { AnnualPayment, AnnualProvision } from '../lib/types'
 
@@ -96,7 +96,10 @@ export default function Accueil() {
       </div>
       <Link to="/prix" className="btn btn-block">🏷️ Où sont mes produits les moins chers ?</Link>
 
-      <h1 className="capitalize">{periodLabel(period)}</h1>
+      <div>
+        <h1 className="capitalize">{periodLabel(period)}</h1>
+        <div className="muted small">{cycleLabel(period)}</div>
+      </div>
 
       <div className="kpis">
         <div className="kpi">

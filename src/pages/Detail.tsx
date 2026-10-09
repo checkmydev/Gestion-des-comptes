@@ -7,7 +7,7 @@ import { loadPurchases } from '../lib/api'
 import { useApp } from '../lib/app'
 import { budgetStatus } from '../lib/budget'
 import { eur, num, storeDate } from '../lib/format'
-import { periodLabel } from '../lib/period'
+import { cycleLabel, periodLabel } from '../lib/period'
 import type { Purchase } from '../lib/types'
 
 export default function Detail() {
@@ -44,7 +44,10 @@ export default function Detail() {
   return (
     <div className="stack">
       <div className="spread">
+        <div>
         <h1 className="capitalize">Détail — {periodLabel(period)}</h1>
+        <div className="muted small">{cycleLabel(period)}</div>
+      </div>
         <span className="strong">{eur(total)}</span>
       </div>
 
@@ -72,6 +75,7 @@ export default function Detail() {
                       <th>Article</th>
                       <th>Magasin + date</th>
                       {c.weighed && <><th className="num">Qté (g)</th><th className="num">€/kg</th></>}
+                      {c.counted && <th className="num">Nbre</th>}
                       <th className="num">Promo</th>
                       <th className="num">Montant</th>
                     </tr>
@@ -79,9 +83,10 @@ export default function Detail() {
                   <tbody>
                     {rows.map((p) => (
                       <tr key={p.id} className="clickable" onClick={() => setEditing(p)}>
-                        <td>{itemById(p.item_id)?.name}{p.units && Number(p.units) > 1 ? <span className="muted"> ×{num(p.units)}</span> : null}{p.note && <div className="muted small">{p.note}</div>}</td>
+                        <td>{itemById(p.item_id)?.name}{!c.counted && p.units && Number(p.units) > 1 ? <span className="muted"> ×{num(p.units)}</span> : null}{p.note && <div className="muted small">{p.note}</div>}</td>
                         <td>{storeDate(storeById(p.store_id)?.name, p.purchased_on)}</td>
                         {c.weighed && <><td className="num">{num(p.quantity_g)}</td><td className="num">{num(p.price_per_kg)}</td></>}
+                        {c.counted && <td className="num">{num(p.units ?? 1)}</td>}
                         <td className="num">{p.promo_pct ? `${num(p.promo_pct)} %` : ''}</td>
                         <td className="num">{eur(p.amount)}</td>
                       </tr>

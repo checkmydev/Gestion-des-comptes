@@ -232,7 +232,7 @@
       <div class="step duo">
         <div>
           <h3>L'écran d'accueil résume tout</h3>
-          <p>En haut, le <strong>mois affiché</strong>. Les flèches <kbd>‹</kbd> <kbd>›</kbd> permettent de passer au mois précédent ou suivant.</p>
+          <p>En haut, le <strong>mois affiché</strong>. Le mois commence le <strong>26</strong>, jour de la pension : « octobre » va du 26 septembre au 25 octobre. <strong>Le 26, l'application passe toute seule au mois suivant.</strong> Les flèches <kbd>‹</kbd> <kbd>›</kbd> permettent de revoir un autre mois.</p>
           <p>Quatre cadres donnent l'essentiel :</p>
           <ul>
             <li><strong>Dépenses courantes</strong> : ce qui a été dépensé ce mois-ci en nourriture, divers, pharmacie… et ce qui est <em>prévu</em> d'ici la fin du mois.</li>
@@ -302,7 +302,7 @@
         <div>
           <h3>① Choisir la catégorie</h3>
           <p>Touchez <span class="ui">+ Saisie</span> en bas de l'écran (ou <span class="ui">+ Encoder une dépense</span> sur l'accueil).</p>
-          <p>Vérifiez le <strong>mois comptable</strong> en haut : c'est le mois dans lequel la dépense sera comptée. Puis touchez la catégorie, ici <strong>Légumes</strong>.</p>
+          <p>Pas besoin de choisir le mois : chaque achat est compté <strong>d'après la date du ticket</strong>, et le mois commence le 26. Touchez la catégorie, ici <strong>Légumes</strong>.</p>
         </div>
         <figure class="phone"><img src="./notice/04-saisie-categorie.webp" alt="Choix de la catégorie" loading="lazy" width="390" height="780" /></figure>
       </div>
@@ -322,14 +322,18 @@
           <p>Le cadre bleu rappelle le <strong>dernier prix payé</strong> pour cet article : pratique pour comparer.</p>
           <ol>
             <li><strong>Magasin</strong> : choisissez-le dans la liste (ou <em>+ Nouveau magasin…</em>).</li>
-            <li><strong>Date</strong> : celle du jour est déjà remplie.</li>
+            <li><strong>Date</strong> : celle du jour est déjà remplie. Pour un ticket plus ancien, changez-la : juste en dessous, l'application indique dans quel mois l'achat sera compté.</li>
             <li>Pour les <strong>légumes et fruits</strong> : la <strong>quantité en grammes</strong> et le <strong>prix au kilo</strong>. L'application calcule le montant toute seule. Si l'article est en promotion, indiquez le <strong>% de promo</strong>. Sans poids ni prix au kilo, l'achat compte bien dans le budget, mais pas dans l'évolution des prix.</li>
-            <li><strong>Montant payé</strong> : pour les autres articles, tapez le prix. Si vous en prenez <strong>plusieurs</strong> (2 Edam, 3 bouteilles…), indiquez-le dans la case <strong>Nombre</strong> : l'application compare ainsi le prix <em>d'une pièce</em> d'un achat à l'autre.</li>
+            <li><strong>Montant payé</strong> : pour les autres articles, tapez le prix payé.</li>
+            <li><strong>Nombre</strong> (catégorie Divers) : la case vaut <strong>1</strong> par défaut. Si vous en prenez plusieurs (2 Edam, 3 bouteilles…), changez-la. L'application compare ainsi le prix <em>d'une pièce</em> d'un achat à l'autre.</li>
           </ol>
           <p>Touchez <span class="ui">Enregistrer</span>.</p>
           <p class="tip"><strong>Astuce : les petits calculs</strong>Pour deux paquets à 2,15 €, tapez <kbd>2*2,15</kbd> dans le montant : l'application calcule 4,30 € et met <strong>2</strong> dans la case Nombre toute seule. La virgule et le point fonctionnent tous les deux.</p>
         </div>
-        <figure class="phone"><img src="./notice/06-saisie-infos.webp" alt="Formulaire : magasin, date, quantité, prix au kilo, montant calculé" loading="lazy" width="390" height="780" /></figure>
+        <div class="shots">
+          <figure class="phone"><img src="./notice/06-saisie-infos.webp" alt="Formulaire Légumes : magasin, date, quantité, prix au kilo, montant calculé" loading="lazy" width="390" height="780" /><figcaption>Légumes : au poids</figcaption></figure>
+          <figure class="phone"><img src="./notice/06b-saisie-nombre.webp" alt="Formulaire Divers : montant 2*1,99 et case Nombre à 2" loading="lazy" width="390" height="780" /><figcaption>Divers : avec la case Nombre</figcaption></figure>
+        </div>
       </div>
 
       <div class="step duo">
@@ -465,8 +469,8 @@
       <div class="chapter-head"><span class="num">?</span><h2 class="chapter-title">Bon à savoir</h2></div>
 
       <details>
-        <summary>Un achat du 28 septembre, je le compte en septembre ou en octobre ?</summary>
-        <p>Comme vous préférez : la <strong>date</strong> est celle du ticket, le <strong>mois comptable</strong> est celui choisi en haut de l'écran. Pour compter un achat de fin septembre dans octobre, laissez simplement octobre en haut.</p>
+        <summary>Un achat du 28 septembre, il compte dans quel mois ?</summary>
+        <p>En <strong>octobre</strong>, automatiquement : le mois commence le 26, jour de la pension. Un ticket du 26 septembre au 25 octobre compte donc en octobre. Il suffit d'indiquer la bonne date du ticket.</p>
       </details>
       <details>
         <summary>Comment changer de mois ?</summary>

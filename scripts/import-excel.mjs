@@ -27,7 +27,7 @@ const CATEGORIES = [
   { name: 'Viande & jambon', re: /^viande/i },
   { name: 'Œufs', re: /^(œ|oe)ufs/i },
   { name: 'Médocs & toubibs', re: /^m[ée]docs/i },
-  { name: 'Divers', re: /^divers/i, inflation: true },
+  { name: 'Divers', re: /^divers/i, inflation: true, counted: true },
   { name: 'Restos & sorties', re: /^restos/i },
   { name: 'Frais extra', re: /^frais extra/i },
 ]
@@ -334,8 +334,8 @@ begin
     raise exception 'Aucun utilisateur avec l''adresse %. Créez-le d''abord (Authentication > Users).', ${q(email)};
   end if;
 
-  insert into categories (user_id, name, sort_order, weighed, track_inflation) values
-${CATEGORIES.map((c, i) => `    (uid, ${q(c.name)}, ${i}, ${Boolean(c.weighed)}, ${Boolean(c.inflation)})`).join(',\n')}
+  insert into categories (user_id, name, sort_order, weighed, counted, track_inflation) values
+${CATEGORIES.map((c, i) => `    (uid, ${q(c.name)}, ${i}, ${Boolean(c.weighed)}, ${Boolean(c.counted)}, ${Boolean(c.inflation)})`).join(',\n')}
   on conflict (user_id, name) do nothing;
 
   insert into stores (user_id, name) values

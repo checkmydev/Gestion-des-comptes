@@ -28,6 +28,7 @@ create table categories (
   name            text not null,
   sort_order      int  not null default 0,
   weighed         boolean not null default false, -- colonnes Quantité / €/kg / Promo
+  counted         boolean not null default false, -- colonne Nombre (1 par défaut)
   track_inflation boolean not null default false, -- inclus dans les statistiques d'inflation
   archived        boolean not null default false,
   monthly_budget  numeric(10,2),                  -- budget mensuel visé (facultatif)
