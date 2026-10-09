@@ -37,7 +37,8 @@ Ce que tu sais du fonctionnement de ses comptes :
 
 Règles :
 - Pour toute question sur ses dépenses, utilise les outils de données ; n'invente jamais un montant. Si une donnée manque, dis-le.
-- Pour trouver le meilleur prix d'un produit, utilise la recherche web sur les sites des enseignes belges (delhaize.be, colruyt.be, lidl.be, aldi.be, carrefour.eu, intermarche.be…) et compare au prix qu'il paie d'habitude (outil historique_prix). Compare des produits équivalents (même format ou prix au kilo), signale les promotions et leur date de fin si elle est connue. Donne toujours tes sources (enseigne et lien), et précise qu'un prix en ligne peut différer en magasin.
+- Pour trouver le meilleur prix d'un produit, utilise la recherche web sur les sites des enseignes belges (delhaize.be, colruyt.be, lidl.be, aldi.be, carrefour.eu, intermarche.be…) et compare au prix qu'il paie d'habitude (outil historique_prix). Compare des produits équivalents (même format ou prix au kilo), signale les promotions et leur date de fin si elle est connue. Donne toujours tes sources (enseigne et lien), et précise qu'un prix en ligne peut différer en magasin. Pense aussi aux dépliants promotionnels de la semaine. Certaines pages produits ne se laissent pas lire et, chez Colruyt, le prix dépend du magasin choisi : si un prix reste introuvable, dis précisément pourquoi pour cette enseigne (n'écris pas que la recherche est « indisponible »).
+- Termine une recherche de prix par les liens complets (URL) des pages utilisées.
 - N'enregistre des prix (outil enregistrer_prix_releves) que si l'utilisateur te le demande explicitement, ou après lui avoir proposé et obtenu son accord dans la conversation.
 - Montants en euros au format belge (1 234,56 €). Arrondis raisonnablement.
 - Tu peux conseiller (où acheter moins cher, quel poste surveiller), sans moraliser.
@@ -47,8 +48,8 @@ Règles :
 // Outils
 // ---------------------------------------------------------------------------
 const TOOLS: Anthropic.Beta.BetaToolUnion[] = [
-  { type: 'web_search_20260209', name: 'web_search', max_uses: 6, user_location: { type: 'approximate', country: 'BE', timezone: 'Europe/Brussels' } },
-  { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 6 },
+  { type: 'web_search_20260209', name: 'web_search', max_uses: 12, user_location: { type: 'approximate', country: 'BE', timezone: 'Europe/Brussels' } },
+  { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 10 },
   {
     name: 'resume_mois',
     description: "Résumé d'un mois comptable : total par catégorie, budgets, rentrées, dépenses fixes, essence. Sans période : le mois en cours.",
@@ -170,6 +171,12 @@ async function runTool(db: Db, name: string, input: Input, question: string): Pr
         suggestion: str(input.suggestion)?.slice(0, 2000) ?? null,
         question: question.slice(0, 2000),
       }
+      // Pas de doublon : un signalement encore ouvert sur le même sujet n'est pas recréé
+      const words = (t: string) => new Set(t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().match(/[a-z]{5,}/g) ?? [])
+      const open = await must(db.from('app_reports').select('id, titre').in('statut', ['nouveau', 'en_cours'])) as { id: number; titre: string }[]
+      const mine = words(row.titre)
+      const twin = open.find((r) => [...words(r.titre)].filter((w) => mine.has(w)).length >= 2)
+      if (twin) return { enregistre: false, deja_signale: twin.id, titre: twin.titre }
       const saved = await must(db.from('app_reports').insert(row).select('id').single()) as { id: number }
       return { enregistre: true, numero: saved.id }
     }
@@ -344,10 +351,14 @@ Deno.serve(async (req: Request) => {
       usage.cache_read += response.usage.cache_read_input_tokens ?? 0
       usage.web_searches += response.usage.server_tool_use?.web_search_requests ?? 0
 
-      // Sources citées par la recherche web
+      // Sources : citations de la réponse et pages effectivement lues
       for (const block of response.content) {
         if (block.type === 'text' && block.citations) {
           for (const c of block.citations) if ('url' in c && c.url) sources.set(c.url, ('title' in c && c.title) || c.url)
+        }
+        if (block.type === 'web_fetch_tool_result' && !Array.isArray(block.content) && block.content.type === 'web_fetch_result') {
+          const page = block.content
+          if (!sources.has(page.url)) sources.set(page.url, page.content?.title || new URL(page.url).hostname)
         }
       }
 
