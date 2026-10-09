@@ -7,6 +7,7 @@ import { compareProducts, storeRanking } from '../lib/bestprices'
 import { eur, longDate, pct } from '../lib/format'
 import { UNIT_LABEL } from '../lib/prices'
 import type { PriceReference, Purchase } from '../lib/types'
+import { ProductIcon } from '../components/ProductIcon'
 
 /** Onglets communs aux pages « Liste de courses » et « Meilleurs prix ». */
 export function CoursesTabs() {
@@ -126,7 +127,7 @@ export default function MeilleursPrix() {
                 <section key={p.item.id} className="card" style={{ padding: 14 }}>
                   <div className="spread" style={{ alignItems: 'flex-start' }}>
                     <div>
-                      <strong>{p.item.name}</strong>
+                      <strong className="pname"><ProductIcon name={p.item.name} category={p.category?.name} icon={p.item.icon} />{p.item.name}</strong>
                       <div className="muted small">{p.category?.name} · {UNIT_LABEL[p.best.unit]}</div>
                     </div>
                     {saving && <span className="badge ok" style={{ background: 'var(--accent-soft)', color: 'var(--good-ink)' }}>{pct(p.diffPct!)}</span>}

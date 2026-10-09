@@ -40,6 +40,7 @@ create table items (
   user_id     uuid not null default auth.uid() references auth.users on delete cascade,
   category_id bigint not null references categories on delete cascade,
   name        text not null,
+  icon        text,                 -- émoji choisi à la main (sinon déduit du nom)
   unique (category_id, name)
 );
 
@@ -219,6 +220,22 @@ create table assistant_memory (
 );
 
 -- ---------------------------------------------------------------------------
+-- Journal des ajouts de l'assistant (annulation, traçabilité)
+-- ---------------------------------------------------------------------------
+create table assistant_actions (
+  id         bigint generated always as identity primary key,
+  user_id    uuid not null default auth.uid() references auth.users on delete cascade,
+  created_at timestamptz not null default now(),
+  table_name text not null check (table_name in ('purchases', 'monthly_lines', 'fuel_fills', 'annual_payments', 'savings_movements')),
+  row_id     bigint not null,
+  action     text not null default 'ajout' check (action in ('ajout', 'modification')),
+  resume     text not null,
+  avant      numeric(10,2),
+  groupe     text not null default gen_random_uuid()::text,
+  annule     boolean not null default false
+);
+
+-- ---------------------------------------------------------------------------
 -- Vue : total par catégorie et par mois (alimente le Global et les stats)
 -- security_invoker => les règles RLS des tables sous-jacentes s'appliquent.
 -- ---------------------------------------------------------------------------
@@ -262,7 +279,7 @@ begin
   foreach t in array array[
     'categories', 'items', 'stores', 'purchases', 'months', 'monthly_lines',
     'annual_provisions', 'annual_payments', 'user_settings', 'savings_movements',
-    'fuel_fills', 'trips', 'price_references', 'documents', 'app_reports', 'assistant_memory'
+    'fuel_fills', 'trips', 'price_references', 'documents', 'app_reports', 'assistant_memory', 'assistant_actions'
   ] loop
     execute format('alter table %I enable row level security', t);
     execute format(

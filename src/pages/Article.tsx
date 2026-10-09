@@ -8,6 +8,7 @@ import { eur, longDate, pct, storeDate } from '../lib/format'
 import { pointsFromPurchases, pointsFromReferences, storeColor, trendsByStore, UNIT_LABEL, type Unit } from '../lib/prices'
 import { supabase } from '../lib/supabase'
 import type { PriceReference, Purchase } from '../lib/types'
+import { ProductIcon } from '../components/ProductIcon'
 
 /** Évolution du prix d'un produit (tous magasins), avec les prix relevés. */
 export default function Article() {
@@ -60,7 +61,7 @@ export default function Article() {
     <div className="stack">
       <div>
         <div className="muted small">{categoryById(item.category_id)?.name}</div>
-        <h1>{item.name}</h1>
+        <h1 className="pname"><ProductIcon name={item.name} category={categoryById(item.category_id)?.name} icon={item.icon} />{item.name}</h1>
       </div>
 
       {units.length > 1 && (

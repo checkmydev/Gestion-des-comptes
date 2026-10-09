@@ -5,6 +5,8 @@ import { useApp } from '../lib/app'
 import { eur } from '../lib/format'
 import { currentPeriod, cycleLabel, periodLabel } from '../lib/period'
 import type { Category, Item, Purchase } from '../lib/types'
+import { ProductIcon } from '../components/ProductIcon'
+import { categoryIcon } from '../lib/icons'
 
 type Step = 'category' | 'item' | 'details' | 'again' | 'consult'
 
@@ -84,7 +86,7 @@ export default function Saisie() {
           <div className="tiles">
             {active.map((c) => (
               <button key={c.id} className="tile" onClick={() => chooseCategory(c)}>
-                {c.name}
+                <span className="tile-icon" aria-hidden="true">{categoryIcon(c.name)}</span>{c.name}
                 <span className="sub">{items.filter((i) => i.category_id === c.id).length} articles</span>
               </button>
             ))}
@@ -117,7 +119,7 @@ export default function Saisie() {
           <div className="list">
             {categoryItems.map((i) => (
               <button key={i.id} onClick={() => { setItem(i); setStep('details') }}>
-                {i.name} <span className="muted">›</span>
+                <span className="pname"><ProductIcon name={i.name} category={category.name} icon={i.icon} />{i.name}</span> <span className="muted">›</span>
               </button>
             ))}
             {!categoryItems.length && !search && <p className="muted" style={{ padding: 12 }}>Aucun article : tapez un nom ci-dessus pour le créer.</p>}

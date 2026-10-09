@@ -6,6 +6,7 @@ import { useApp } from '../lib/app'
 import { eur, longDate, pct } from '../lib/format'
 import { pointsFromPurchases, trendsByStore, UNIT_LABEL, type StoreTrend } from '../lib/prices'
 import type { Purchase } from '../lib/types'
+import { ProductIcon } from '../components/ProductIcon'
 
 type Row = StoreTrend & { itemId: number; itemName: string; categoryName: string }
 
@@ -104,7 +105,7 @@ export default function Inflation() {
             <tbody>
               {shown.map((r) => (
                 <tr key={`${r.itemId}-${r.storeName}-${r.unit}`} className="clickable" onClick={() => navigate(`/article/${r.itemId}`)}>
-                  <td>{r.itemName}<div className="muted small">{r.categoryName} · {UNIT_LABEL[r.unit]}</div></td>
+                  <td><span className="pname"><ProductIcon name={r.itemName} category={r.categoryName} icon={items.find((i) => i.id === r.itemId)?.icon} />{r.itemName}</span><div className="muted small">{r.categoryName} · {UNIT_LABEL[r.unit]}</div></td>
                   <td>{r.storeName}</td>
                   <td className="num">{eur(r.first.value)}<div className="muted small">{longDate(r.first.date)}</div></td>
                   <td className="num">{eur(r.last.value)}<div className="muted small">{longDate(r.last.date)}</div></td>

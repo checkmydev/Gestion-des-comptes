@@ -9,6 +9,7 @@ import { currentPeriod, cycleDays, cycleLabel, periodLabel } from '../lib/period
 import { planShopping, type Suggestion } from '../lib/shopping'
 import type { PriceReference, Purchase } from '../lib/types'
 import { CoursesTabs } from './MeilleursPrix'
+import { ProductIcon } from '../components/ProductIcon'
 
 type Horizon = 7 | 'mois'
 type Grouping = 'categorie' | 'magasin'
@@ -78,7 +79,7 @@ export default function Courses() {
     <label key={s.item.id} className="row" style={{ flexWrap: 'nowrap', padding: '10px 0', borderBottom: '1px solid var(--grid)', opacity: muted ? 0.75 : 1 }}>
       <input type="checkbox" checked={checked.has(s.item.id)} onChange={() => toggle(s.item.id)} />
       <span className="grow" style={{ textDecoration: checked.has(s.item.id) ? 'line-through' : undefined }}>
-        <strong>{s.item.name}</strong>
+        <strong className="pname"><ProductIcon name={s.item.name} category={s.category.name} icon={s.item.icon} />{s.item.name}</strong>
         {(() => {
           const where = grouping === 'magasin' ? s.category.name : s.bestStore?.name ?? s.lastStore
           return where ? <span className="muted small"> · {where}</span> : null

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useApp } from '../lib/app'
 import { supabase } from '../lib/supabase'
 
 interface Source { url: string; title: string }
@@ -105,6 +106,7 @@ function ThinkingBubble({ question }: { question: string }) {
  * (la clé de l'IA n'est jamais dans l'application).
  */
 export default function Assistant() {
+  const { reload } = useApp()
   const [messages, setMessages] = useState<ChatMessage[]>(loadConversation)
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -135,6 +137,7 @@ export default function Assistant() {
       }
       const reply = (data?.reply as string) ?? "Je n'ai pas trouvé de réponse."
       setMessages((m) => [...m, { role: 'assistant', content: reply, sources: data?.sources ?? [] }])
+      void reload() // l'assistant a pu créer des articles ou des magasins
     } catch (e) {
       setMessages((m) => [...m, { role: 'assistant', content: (e as Error).message, error: true }])
     } finally {

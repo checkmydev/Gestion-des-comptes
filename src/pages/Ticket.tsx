@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { must } from '../lib/api'
 import { useApp } from '../lib/app'
-import { eur, parseAmount, todayIso } from '../lib/format'
+import { eur, longDate, parseAmount, todayIso } from '../lib/format'
 import { cycleLabel, periodForDate, periodLabel } from '../lib/period'
 import { supabase } from '../lib/supabase'
+import { productIcon } from '../lib/icons'
 
 interface ScannedLine {
   texte_ticket: string
@@ -52,7 +53,8 @@ export default function Ticket() {
   const [remark, setRemark] = useState<string | null>(null)
   const [rows, setRows] = useState<Row[]>([])
   const [saving, setSaving] = useState(false)
-  const [savedCount, setSavedCount] = useState(0)
+  const [saved, setSaved] = useState<{ article: string; category: string; amount: number }[]>([])
+  const [zoom, setZoom] = useState(false)
 
   const catById = (id: number) => categories.find((c) => c.id === id)
 
@@ -102,12 +104,14 @@ export default function Ticket() {
 
   async function save() {
     if (invalid || !kept.length) return
+    if (gap != null && Math.abs(gap) > 0.02 && !confirm(`Le total des lignes (${eur(sum)}) ne correspond pas au ticket (${eur(ticketTotal!)}). Enregistrer quand même ?`)) return
     setSaving(true)
     setError(null)
     try {
       const storeId = store.trim() ? (await ensureStore(store.trim())).id : null
       const period = periodForDate(date)
       const payload = []
+      const recap: { article: string; category: string; amount: number }[] = []
       for (const r of kept) {
         const cat = catById(r.categoryId)!
         const item = await ensureItem(cat.id, r.article)
@@ -121,9 +125,10 @@ export default function Ticket() {
           quantity_g: grams, price_per_kg: ppk, promo_pct: promo, units: units > 1 ? units : null,
           amount, note: 'ticket scanné',
         })
+        recap.push({ article: item.name, category: cat.name, amount })
       }
       must(await supabase.from('purchases').insert(payload))
-      setSavedCount(payload.length)
+      setSaved(recap)
       setStep('fini')
     } catch (e) {
       setError((e as Error).message)
@@ -140,7 +145,18 @@ export default function Ticket() {
     return (
       <div className="card stack">
         <h1>✓ Ticket enregistré</h1>
-        <p>{savedCount} achat{savedCount > 1 ? 's' : ''} ajouté{savedCount > 1 ? 's' : ''}, compté{savedCount > 1 ? 's' : ''} en <strong className="capitalize">{periodLabel(periodForDate(date))}</strong>.</p>
+        <p style={{ margin: 0 }}>
+          {saved.length} achat{saved.length > 1 ? 's' : ''}{store.trim() ? <> chez <strong>{store.trim()}</strong></> : null}, le {longDate(date)},
+          compté{saved.length > 1 ? 's' : ''} en <strong className="capitalize">{periodLabel(periodForDate(date))}</strong> :
+        </p>
+        <table>
+          <tbody>
+            {saved.map((r, i) => (
+              <tr key={i}><td>{r.article}<div className="muted small">{r.category}</div></td><td className="num">{eur(r.amount)}</td></tr>
+            ))}
+          </tbody>
+          <tfoot><tr><td>Total</td><td className="num">{eur(saved.reduce((a, r) => a + r.amount, 0))}</td></tr></tfoot>
+        </table>
         <button className="btn-primary btn-big" onClick={reset}>📷 Scanner un autre ticket</button>
         <button className="btn-big" onClick={() => navigate('/detail')}>Voir le détail du mois</button>
       </div>
@@ -176,6 +192,27 @@ export default function Ticket() {
 
       {step === 'verif' && (
         <>
+          <section className="card read-summary" aria-label="Ce qui a été lu sur le ticket">
+            {preview && (
+              <button type="button" className="read-thumb" onClick={() => setZoom((z) => !z)} aria-label={zoom ? 'Réduire la photo' : 'Agrandir la photo'}>
+                <img src={preview} alt="Votre ticket" className={zoom ? 'zoomed' : ''} />
+              </button>
+            )}
+            <div className="grow">
+              <h2 style={{ marginBottom: 6 }}>Voici ce que j'ai lu</h2>
+              <ul className="read-facts">
+                <li>🏪 <strong>{store || 'Magasin non lu'}</strong></li>
+                <li>📅 {longDate(date)}</li>
+                <li>🧾 {rows.length} article{rows.length > 1 ? 's' : ''}{ticketTotal != null && <> · total <strong>{eur(ticketTotal)}</strong></>}</li>
+                {gap != null && Math.abs(gap) <= 0.02
+                  ? <li className="ok">✓ Le total des articles correspond au ticket</li>
+                  : gap != null ? <li className="warn">⚠ Écart de {eur(Math.abs(gap))} avec le total du ticket</li> : null}
+                {rows.some((r) => r.uncertain) && <li className="warn">⚠ {rows.filter((r) => r.uncertain).length} ligne{rows.filter((r) => r.uncertain).length > 1 ? 's' : ''} difficile{rows.filter((r) => r.uncertain).length > 1 ? 's' : ''} à lire (en jaune)</li>}
+              </ul>
+            </div>
+          </section>
+          <p className="callout-step"><strong>À vous :</strong> vérifiez les lignes ci-dessous en les comparant au ticket, corrigez si besoin, puis touchez <strong>« Valider et enregistrer »</strong> en bas.</p>
+
           <div className="card stack" style={{ gap: 10 }}>
             <div className="grid2">
               <label className="field">
@@ -192,7 +229,7 @@ export default function Ticket() {
             {remark && <p className="alert" style={{ margin: 0 }}>{remark}</p>}
           </div>
 
-          <p className="small ink2" style={{ margin: 0 }}>Vérifiez chaque ligne : touchez un champ pour le corriger, décochez ce qui ne doit pas être enregistré.</p>
+          <p className="small ink2" style={{ margin: 0 }}>Touchez un champ pour le corriger ; décochez une ligne pour ne pas l'enregistrer.</p>
 
           {rows.map((r, i) => {
             const cat = catById(r.categoryId)
@@ -203,7 +240,8 @@ export default function Ticket() {
                   <input type="checkbox" checked={r.keep} onChange={(e) => update(i, { keep: e.target.checked })} aria-label="Enregistrer cette ligne" style={{ marginTop: 10 }} />
                   <div className="grow stack" style={{ gap: 8 }}>
                     <div className="muted small">Ticket : « {r.source} »{r.uncertain && <strong style={{ color: 'var(--ink)' }}> · à vérifier</strong>}{r.discount ? ` · réduction ${eur(r.discount)} déduite` : ''}</div>
-                    <div className="grid2" style={{ gridTemplateColumns: '3fr 2fr' }}>
+                    <div className="grid2" style={{ gridTemplateColumns: 'auto 3fr 2fr', alignItems: 'center' }}>
+                      <span className="picon picon-lg" aria-hidden="true">{productIcon(r.article, catById(r.categoryId)?.name)}</span>
                       <input list={`items-${i}`} value={r.article} onChange={(e) => update(i, { article: e.target.value })} aria-label="Article" />
                       <datalist id={`items-${i}`}>{names.map((n) => <option key={n.id} value={n.name} />)}</datalist>
                       <select value={r.categoryId} onChange={(e) => update(i, { categoryId: Number(e.target.value) })} aria-label="Catégorie">
@@ -240,7 +278,7 @@ export default function Ticket() {
 
           {error && <p className="alert over" style={{ margin: 0 }}>{error}</p>}
           <button className="btn-primary btn-big" disabled={saving || invalid || !kept.length} onClick={save}>
-            {saving ? 'Enregistrement…' : `Enregistrer ${kept.length} achat${kept.length > 1 ? 's' : ''}`}
+            {saving ? 'Enregistrement…' : `✓ Valider et enregistrer ${kept.length} achat${kept.length > 1 ? 's' : ''}`}
           </button>
           <button className="btn-ghost" onClick={reset}>Recommencer avec une autre photo</button>
         </>

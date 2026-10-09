@@ -16,6 +16,8 @@ export interface Item {
   id: number
   category_id: number
   name: string
+  /** Émoji choisi à la main (sinon déduit du nom). */
+  icon?: string | null
 }
 
 export interface Store {

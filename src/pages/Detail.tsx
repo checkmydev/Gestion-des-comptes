@@ -9,6 +9,7 @@ import { budgetStatus } from '../lib/budget'
 import { eur, num, storeDate } from '../lib/format'
 import { cycleLabel, periodLabel } from '../lib/period'
 import type { Purchase } from '../lib/types'
+import { ProductIcon } from '../components/ProductIcon'
 
 export default function Detail() {
   const { period, categories, itemById, storeById, categoryById } = useApp()
@@ -83,7 +84,7 @@ export default function Detail() {
                   <tbody>
                     {rows.map((p) => (
                       <tr key={p.id} className="clickable" onClick={() => setEditing(p)}>
-                        <td>{itemById(p.item_id)?.name}{!c.counted && p.units && Number(p.units) > 1 ? <span className="muted"> ×{num(p.units)}</span> : null}{p.note && <div className="muted small">{p.note}</div>}</td>
+                        <td><span className="pname"><ProductIcon name={itemById(p.item_id)?.name ?? ''} category={c.name} icon={itemById(p.item_id)?.icon} />{itemById(p.item_id)?.name}</span>{!c.counted && p.units && Number(p.units) > 1 ? <span className="muted"> ×{num(p.units)}</span> : null}{p.note && <div className="muted small">{p.note}</div>}</td>
                         <td>{storeDate(storeById(p.store_id)?.name, p.purchased_on)}</td>
                         {c.weighed && <><td className="num">{num(p.quantity_g)}</td><td className="num">{num(p.price_per_kg)}</td></>}
                         {c.counted && <td className="num">{num(p.units ?? 1)}</td>}

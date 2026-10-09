@@ -6,6 +6,9 @@ import { eur } from '../lib/format'
 import { supabase } from '../lib/supabase'
 import type { Category, Item, Store } from '../lib/types'
 import type { FormSpec } from './Global'
+import { ProductIcon } from '../components/ProductIcon'
+import { productIcon } from '../lib/icons'
+import { readTextSize, saveTextSize, TEXT_SIZES, type TextSize } from '../lib/textsize'
 
 /** Catégories reprises du fichier Excel (modèle d'octobre). */
 export const DEFAULT_CATEGORIES: Partial<Category>[] = [
@@ -27,6 +30,7 @@ export default function Parametres() {
   const [form, setForm] = useState<FormSpec | null>(null)
   const [itemCat, setItemCat] = useState<number | null>(categories[0]?.id ?? null)
   const [error, setError] = useState<string | null>(null)
+  const [textSize, setTextSize] = useState<TextSize>(readTextSize)
 
   const run = async (f: () => Promise<unknown>) => {
     try { await f(); await reload() } catch (e) { setError((e as Error).message) }
@@ -77,6 +81,7 @@ export default function Parametres() {
     title: it.name,
     fields: [
       { key: 'name', label: 'Nom de l\'article', type: 'text', required: true },
+      { key: 'icon', label: 'Icône (un émoji)', type: 'text', placeholder: productIcon(it.name, categories.find((c) => c.id === it.category_id)?.name), hint: 'laisser vide pour l\'icône automatique' },
       { key: 'category_id', label: 'Catégorie', type: 'select', options: categories.map((c) => ({ value: String(c.id), label: c.name })) },
     ],
     initial: { ...it, category_id: String(it.category_id) },
@@ -102,6 +107,20 @@ export default function Parametres() {
     <div className="stack">
       <h1>Paramètres</h1>
       {error && <p className="error">{error}</p>}
+
+      <section className="card">
+        <h2>Taille du texte</h2>
+        <div className="chips" role="radiogroup" aria-label="Taille du texte">
+          {TEXT_SIZES.map((t) => (
+            <button key={t.value} role="radio" aria-checked={textSize === t.value}
+              className={`chip ${textSize === t.value ? 'selected' : ''}`}
+              onClick={() => { saveTextSize(t.value); setTextSize(t.value) }}>
+              {textSize === t.value && '✓ '}{t.label}
+            </button>
+          ))}
+        </div>
+        <p className="muted small" style={{ marginBottom: 0 }}>Réglage propre à cet appareil (GSM, tablette…).</p>
+      </section>
 
       <section className="card">
         <div className="spread"><h2>Objectifs</h2><button className="btn-ghost" onClick={editSettings}>Modifier</button></div>
@@ -134,7 +153,7 @@ export default function Parametres() {
         </select>
         <div className="list">
           {items.filter((i) => i.category_id === itemCat).map((i) => (
-            <button key={i.id} onClick={() => editItem(i)}>{i.name} <span className="muted">›</span></button>
+            <button key={i.id} onClick={() => editItem(i)}><span className="pname"><ProductIcon name={i.name} category={categories.find((c) => c.id === i.category_id)?.name} icon={i.icon} />{i.name}</span> <span className="muted">›</span></button>
           ))}
         </div>
         <p className="muted small">Les nouveaux articles se créent directement depuis la saisie.</p>
