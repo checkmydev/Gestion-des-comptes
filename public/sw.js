@@ -1,6 +1,6 @@
 // Service worker : rend l'application installable et permet de l'ouvrir hors connexion.
 // Les données (Supabase) ne sont jamais mises en cache : elles viennent toujours du réseau.
-const CACHE = 'comptes-v1'
+const CACHE = 'comptes-v2'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './manifest.webmanifest', './icon-192.png'])))
