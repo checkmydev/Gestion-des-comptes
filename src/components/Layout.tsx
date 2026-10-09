@@ -72,7 +72,7 @@ export function Layout() {
       )}
       <nav className="bottomnav">
         {NAV.map((n) => (
-          <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => (isActive || (n.to === '/courses' && pathname === '/prix') ? 'active' : '')}>
+          <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => (isActive || (n.to === '/courses' && pathname === '/prix') || (n.to === '/saisie' && pathname === '/ticket') ? 'active' : '')}>
             {icon(n.d)}
             {n.label}
           </NavLink>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { PurchaseForm } from '../components/PurchaseForm'
 import { useApp } from '../lib/app'
 import { eur } from '../lib/format'
@@ -78,6 +78,8 @@ export default function Saisie() {
 
       {step === 'category' && (
         <section className="stack">
+          <Link to="/ticket" className="btn btn-primary btn-big btn-block">📷 Scanner un ticket de caisse</Link>
+          <p className="muted small" style={{ margin: 0, textAlign: 'center' }}>ou encodez article par article :</p>
           <h1>Quelle catégorie ?</h1>
           <div className="tiles">
             {active.map((c) => (
