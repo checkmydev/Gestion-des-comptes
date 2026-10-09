@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { HashRouter, Route, Routes } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { InstallPrompt } from './components/InstallPrompt'
 import { Layout } from './components/Layout'
 import { frenchError } from './lib/api'
@@ -83,7 +83,9 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route element={<Layout />}>
-            <Route index element={<Accueil />} />
+            {/* L'application s'ouvre sur l'assistant ; le tableau de bord est à côté */}
+            <Route index element={<Navigate to="/assistant" replace />} />
+            <Route path="tableau" element={<Accueil />} />
             <Route path="saisie" element={<Saisie />} />
             <Route path="ticket" element={<Ticket />} />
             <Route path="courses" element={<Courses />} />
@@ -96,7 +98,7 @@ export default function App() {
             <Route path="parametres" element={<Parametres />} />
             <Route path="doc/:slug" element={<Document />} />
             <Route path="assistant" element={<Assistant />} />
-            <Route path="*" element={<Accueil />} />
+            <Route path="*" element={<Navigate to="/assistant" replace />} />
           </Route>
         </Routes>
       </HashRouter>

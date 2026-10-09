@@ -22,6 +22,12 @@ interface AppState {
   /** Crée l'article s'il n'existe pas encore dans la catégorie. */
   ensureItem: (categoryId: number, name: string) => Promise<Item>
   ensureStore: (name: string) => Promise<Store>
+  /** Augmente quand l'assistant a modifié des données : l'écran affiché se recharge. */
+  dataVersion: number
+  dataChanged: () => void
+  /** Panneau de l'assistant ouvert par-dessus l'écran en cours. */
+  assistantOpen: boolean
+  setAssistantOpen: (open: boolean) => void
 }
 
 const Ctx = createContext<AppState | null>(null)
@@ -37,6 +43,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [dataVersion, setDataVersion] = useState(0)
+  const [assistantOpen, setAssistantOpen] = useState(false)
+  const dataChanged = useCallback(() => setDataVersion((v) => v + 1), [])
 
   const setPeriod = useCallback((p: string) => {
     setPeriodState(p)
@@ -89,6 +98,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const norm = (s: string) => s.trim().toLocaleLowerCase('fr')
     return {
       period, setPeriod, categories, items, stores, settings, loading, error, reload,
+      dataVersion, dataChanged, assistantOpen, setAssistantOpen,
       categoryById: (id) => categories.find((c) => c.id === id),
       itemById: (id) => items.find((i) => i.id === id),
       storeById: (id) => (id == null ? undefined : stores.find((s) => s.id === id)),
@@ -111,7 +121,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return created
       },
     }
-  }, [period, setPeriod, categories, items, stores, settings, loading, error, reload])
+  }, [period, setPeriod, categories, items, stores, settings, loading, error, reload, dataVersion, dataChanged, assistantOpen])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

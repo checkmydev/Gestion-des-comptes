@@ -220,17 +220,51 @@ create table assistant_memory (
 );
 
 -- ---------------------------------------------------------------------------
+-- Conversations avec l'assistant (retrouvées sur tous les appareils)
+-- ---------------------------------------------------------------------------
+create table assistant_conversations (
+  id         bigint generated always as identity primary key,
+  user_id    uuid not null default auth.uid() references auth.users on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  titre      text not null default '',
+  messages   jsonb not null default '[]'::jsonb,  -- [{ role, content, sources? }]
+  resume       text,                         -- résumé des anciens messages (compactage)
+  resume_count int not null default 0         -- nombre de messages couverts par le résumé
+);
+create index assistant_conversations_recent on assistant_conversations (user_id, updated_at desc);
+
+-- Coût de chaque requête à l'assistant (suivi, et déclenchement du compactage)
+create table assistant_usage (
+  id              bigint generated always as identity primary key,
+  user_id         uuid not null default auth.uid() references auth.users on delete cascade,
+  created_at      timestamptz not null default now(),
+  conversation_id bigint references assistant_conversations on delete set null,
+  question        text,
+  input_tokens    int not null default 0,
+  output_tokens   int not null default 0,
+  cache_read      int not null default 0,
+  cache_write     int not null default 0,
+  web_searches    int not null default 0,
+  cout_eur        numeric(8,4) not null default 0,
+  compacte        boolean not null default false,
+  budget_atteint  boolean not null default false
+);
+
+-- ---------------------------------------------------------------------------
 -- Journal des ajouts de l'assistant (annulation, traçabilité)
 -- ---------------------------------------------------------------------------
 create table assistant_actions (
   id         bigint generated always as identity primary key,
   user_id    uuid not null default auth.uid() references auth.users on delete cascade,
   created_at timestamptz not null default now(),
-  table_name text not null check (table_name in ('purchases', 'monthly_lines', 'fuel_fills', 'annual_payments', 'savings_movements')),
+  table_name text not null check (table_name in ('purchases', 'monthly_lines', 'fuel_fills', 'annual_payments', 'savings_movements', 'items',
+                                        'trips', 'annual_provisions', 'categories', 'user_settings', 'months')),
   row_id     bigint not null,
-  action     text not null default 'ajout' check (action in ('ajout', 'modification')),
+  action     text not null default 'ajout' check (action in ('ajout', 'modification', 'suppression')),
   resume     text not null,
   avant      numeric(10,2),
+  ligne      jsonb,                -- ligne supprimée, pour pouvoir la remettre
   groupe     text not null default gen_random_uuid()::text,
   annule     boolean not null default false
 );
@@ -279,7 +313,7 @@ begin
   foreach t in array array[
     'categories', 'items', 'stores', 'purchases', 'months', 'monthly_lines',
     'annual_provisions', 'annual_payments', 'user_settings', 'savings_movements',
-    'fuel_fills', 'trips', 'price_references', 'documents', 'app_reports', 'assistant_memory', 'assistant_actions'
+    'fuel_fills', 'trips', 'price_references', 'documents', 'app_reports', 'assistant_memory', 'assistant_actions', 'assistant_conversations', 'assistant_usage'
   ] loop
     execute format('alter table %I enable row level security', t);
     execute format(

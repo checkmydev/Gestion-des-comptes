@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { InstallPrompt } from '../components/InstallPrompt'
 import { Loading } from '../components/Layout'
 import { loadLedger, must, type Ledger } from '../lib/api'
@@ -8,6 +8,7 @@ import { budgetStatus, categoryAverage, projectSpending, remainingShare, summari
 import { eur, MONTHS, pct } from '../lib/format'
 import { addMonths, parsePeriod, cycleLabel, periodLabel } from '../lib/period'
 import { supabase } from '../lib/supabase'
+import { setPendingPhoto } from '../lib/ticket'
 import type { AnnualPayment, AnnualProvision } from '../lib/types'
 
 interface Extra {
@@ -21,6 +22,7 @@ interface Alert { level: 'over' | 'warn' | 'info'; text: string; to?: string }
 /** Tableau de bord : où en est le mois, et ce qu'il faut anticiper. */
 export default function Accueil() {
   const { period, categories, settings } = useApp()
+  const navigate = useNavigate()
   const { year, month } = parsePeriod(period)
   const [ledger, setLedger] = useState<Ledger | null>(null)
   const [extra, setExtra] = useState<Extra | null>(null)
@@ -90,16 +92,19 @@ export default function Accueil() {
   return (
     <div className="stack">
       <InstallPrompt />
-      <div className="grid2">
-        <Link to="/saisie" className="btn btn-primary btn-big">+ Encoder une dépense</Link>
-        <Link to="/courses" className="btn btn-big">🛒 Liste de courses</Link>
-      </div>
-      <Link to="/ticket" className="btn btn-block">📷 Scanner un ticket de caisse</Link>
-      <Link to="/prix" className="btn btn-block">🏷️ Où sont mes produits les moins chers ?</Link>
-
       <div>
-        <h1 className="capitalize">{periodLabel(period)}</h1>
+        <h1>Tableau de bord — <span className="capitalize">{periodLabel(period)}</span></h1>
         <div className="muted small">{cycleLabel(period)}</div>
+      </div>
+
+      {/* Raccourcis vers l'assistant (l'application s'ouvre sur lui) */}
+      <div className="grid2">
+        <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
+          📷 Ticket
+          <input type="file" accept="image/*" capture="environment" hidden
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) { setPendingPhoto(f); navigate('/assistant') } }} />
+        </label>
+        <button className="btn" onClick={() => navigate('/assistant?parler=1')}>🎤 Parler</button>
       </div>
 
       <div className="kpis">
@@ -168,6 +173,12 @@ export default function Accueil() {
           Barre = dépensé / budget (ou / moyenne des 3 derniers mois si aucun budget n'est fixé). Budgets à régler dans <Link to="/stats">Analyses</Link>.
         </p>
       </section>
+
+      <div className="grid2">
+        <Link to="/saisie" className="btn">+ Encoder à la main</Link>
+        <Link to="/courses" className="btn">🛒 Liste de courses</Link>
+      </div>
+      <Link to="/prix" className="btn btn-block">🏷️ Où sont mes produits les moins chers ?</Link>
     </div>
   )
 }

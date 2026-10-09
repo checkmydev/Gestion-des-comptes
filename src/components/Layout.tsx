@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { AssistantChat } from './AssistantChat'
 import { useApp } from '../lib/app'
 import { MONTHS } from '../lib/format'
 import { addMonths, makePeriod, parsePeriod } from '../lib/period'
@@ -30,17 +32,19 @@ const icon = (d: string) => (
 )
 
 const NAV = [
-  { to: '/', label: 'Accueil', d: 'M3 11l9-8 9 8M5 10v10h14V10' },
-  { to: '/saisie', label: 'Saisie', d: 'M12 5v14M5 12h14' },
-  { to: '/courses', label: 'Courses', d: 'M3 4h2l2.4 11h11.2L21 7H6.2M9 20h.01M18 20h.01' },
+  { to: '/assistant', label: 'Assistant', d: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM8 9h8M8 13h5' },
+  { to: '/tableau', label: 'Tableau', d: 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z' },
   { to: '/detail', label: 'Détail', d: 'M4 6h16M4 12h16M4 18h10' },
   { to: '/global', label: 'Global', d: 'M4 20V10M10 20V4M16 20v-7M22 20H2' },
   { to: '/stats', label: 'Analyses', d: 'M3 17l6-6 4 4 8-8M15 7h6v6' },
+  { to: '/courses', label: 'Courses', d: 'M3 4h2l2.4 11h11.2L21 7H6.2M9 20h.01M18 20h.01' },
 ]
 
 export function Layout() {
-  const { error } = useApp()
+  const { error, dataVersion, assistantOpen, setAssistantOpen } = useApp()
   const { pathname } = useLocation()
+  // Le panneau se ferme quand on change d'écran (lien dans une réponse, « Corriger »…)
+  useEffect(() => { setAssistantOpen(false) }, [pathname, setAssistantOpen])
   return (
     <div className="app">
       <header className="topbar">
@@ -60,19 +64,27 @@ export function Layout() {
       </header>
       <main className="main">
         {error && <p className="alert over">Erreur de connexion à la base : {error}</p>}
-        <Outlet />
+        {/* Rechargé quand l'assistant a modifié des données */}
+        <Outlet key={pathname === '/assistant' ? 'assistant' : dataVersion} />
       </main>
       {pathname !== '/assistant' && !pathname.startsWith('/doc/') && (
-        <NavLink to="/assistant" className="fab" aria-label="Poser une question à l'assistant" title="Assistant">
+        <button className="fab" onClick={() => setAssistantOpen(true)} aria-label="Parler à l'assistant sans quitter cet écran" title="Assistant">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             <path d="M8 9h8M8 13h5" />
           </svg>
-        </NavLink>
+        </button>
+      )}
+      {assistantOpen && pathname !== '/assistant' && (
+        <div className="chat-sheet-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setAssistantOpen(false) }}>
+          <section className="chat-sheet" role="dialog" aria-label="Assistant">
+            <AssistantChat panel onClose={() => setAssistantOpen(false)} />
+          </section>
+        </div>
       )}
       <nav className="bottomnav">
         {NAV.map((n) => (
-          <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => (isActive || (n.to === '/courses' && pathname === '/prix') || (n.to === '/saisie' && pathname === '/ticket') ? 'active' : '')}>
+          <NavLink key={n.to} to={n.to} className={({ isActive }) => (isActive || (n.to === '/courses' && pathname === '/prix') || (n.to === '/assistant' && pathname === '/ticket') ? 'active' : '')}>
             {icon(n.d)}
             {n.label}
           </NavLink>

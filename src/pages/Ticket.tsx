@@ -1,44 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { must } from '../lib/api'
 import { useApp } from '../lib/app'
+import { patchConversationMessage } from '../lib/chat'
 import { eur, longDate, parseAmount, todayIso } from '../lib/format'
 import { cycleLabel, periodForDate, periodLabel } from '../lib/period'
-import { supabase } from '../lib/supabase'
 import { productIcon } from '../lib/icons'
-
-interface ScannedLine {
-  texte_ticket: string
-  article: string
-  categorie: string
-  montant: number
-  nombre: number | null
-  poids_g: number | null
-  prix_kg: number | null
-  remise: number | null
-  incertain: boolean
-}
-interface ScanResult { magasin: string | null; date: string | null; total_ticket: number | null; remarque: string | null; lignes: ScannedLine[] }
-
-/** Ligne éditable (les nombres restent du texte pendant la saisie) */
-interface Row { keep: boolean; article: string; categoryId: number; amount: string; units: string; grams: string; ppk: string; discount: number | null; source: string; uncertain: boolean }
-
-const txt = (n: number | null | undefined) => (n == null ? '' : String(n).replace('.', ','))
-
-/** Réduit la photo (côté le plus long : 1600 px) avant l'envoi. */
-async function compress(file: File): Promise<string> {
-  const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height))
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.round(bitmap.width * scale)
-  canvas.height = Math.round(bitmap.height * scale)
-  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-  return canvas.toDataURL('image/jpeg', 0.82)
-}
+import { compressPhoto, readTicket, saveTicket, takeHandoff, ticketText, type TicketDraft, type TicketRow as Row } from '../lib/ticket'
 
 /**
  * Scanner un ticket de caisse : photo → lecture automatique → vérification → enregistrement.
  * Rien n'est enregistré avant que l'utilisateur ait vérifié et validé.
+ * Ouvert depuis l'assistant (« Corriger »), il reprend le ticket lu et y revient après validation.
  */
 export default function Ticket() {
   const { categories, items, stores, ensureItem, ensureStore } = useApp()
@@ -55,40 +27,32 @@ export default function Ticket() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState<{ article: string; category: string; amount: number }[]>([])
   const [zoom, setZoom] = useState(false)
+  const [fromChat, setFromChat] = useState<{ conversationId: number | null; messageIndex: number } | null>(null)
 
   const catById = (id: number) => categories.find((c) => c.id === id)
+
+  function load(d: TicketDraft) {
+    setStore(d.store); setDate(d.date); setTicketTotal(d.total); setRemark(d.remark); setRows(d.rows)
+  }
+
+  // Ticket venu du chat
+  useEffect(() => {
+    const h = takeHandoff()
+    if (!h) return
+    load(h.draft)
+    setPreview(h.preview)
+    setFromChat({ conversationId: h.conversationId, messageIndex: h.messageIndex })
+    setStep('verif')
+  }, [])
 
   async function onPhoto(file: File | undefined) {
     if (!file) return
     setError(null)
     setStep('lecture')
     try {
-      const dataUrl = await compress(file)
+      const dataUrl = await compressPhoto(file)
       setPreview(dataUrl)
-      const { data, error: fnError } = await supabase.functions.invoke('comptes-ticket', {
-        body: { image: dataUrl.split(',')[1], media_type: 'image/jpeg' },
-      })
-      if (fnError) {
-        let message = 'La lecture du ticket a échoué. Vérifiez la connexion internet et réessayez.'
-        try { const body = await (fnError as { context?: Response }).context?.json(); if (body?.error) message = body.error } catch { /* ignoré */ }
-        throw new Error(message)
-      }
-      const result = data as ScanResult
-      if (!result.lignes?.length) throw new Error(result.remarque || "Aucun article n'a été trouvé sur la photo.")
-      // Magasin : nom existant si possible
-      const known = stores.find((s) => s.name.toLocaleLowerCase('fr') === (result.magasin ?? '').toLocaleLowerCase('fr'))
-      setStore(known?.name ?? result.magasin ?? '')
-      if (result.date && /^\d{4}-\d{2}-\d{2}$/.test(result.date)) setDate(result.date)
-      setTicketTotal(result.total_ticket)
-      setRemark(result.remarque)
-      setRows(result.lignes.map((l) => {
-        const cat = active.find((c) => c.name === l.categorie) ?? active.find((c) => c.name === 'Divers') ?? active[0]
-        return {
-          keep: true, article: l.article, categoryId: cat.id, amount: txt(l.montant),
-          units: l.nombre && l.nombre > 1 ? String(l.nombre) : '', grams: txt(l.poids_g), ppk: txt(l.prix_kg),
-          discount: l.remise, source: l.texte_ticket, uncertain: l.incertain,
-        }
-      }))
+      load(await readTicket(dataUrl, categories, stores))
       setStep('verif')
     } catch (e) {
       setError((e as Error).message)
@@ -108,27 +72,15 @@ export default function Ticket() {
     setSaving(true)
     setError(null)
     try {
-      const storeId = store.trim() ? (await ensureStore(store.trim())).id : null
-      const period = periodForDate(date)
-      const payload = []
-      const recap: { article: string; category: string; amount: number }[] = []
-      for (const r of kept) {
-        const cat = catById(r.categoryId)!
-        const item = await ensureItem(cat.id, r.article)
-        const amount = parseAmount(r.amount)!
-        const grams = cat.weighed ? parseAmount(r.grams) : null
-        const ppk = cat.weighed ? parseAmount(r.ppk) : null
-        const units = !cat.weighed ? Math.round(parseAmount(r.units) ?? 1) : 1
-        const promo = r.discount && r.discount > 0 ? Math.round((r.discount / (amount + r.discount)) * 1000) / 10 : null
-        payload.push({
-          period, item_id: item.id, store_id: storeId, purchased_on: date,
-          quantity_g: grams, price_per_kg: ppk, promo_pct: promo, units: units > 1 ? units : null,
-          amount, note: 'ticket scanné',
-        })
-        recap.push({ article: item.name, category: cat.name, amount })
+      const draft: TicketDraft = { store, date, total: ticketTotal, remark, rows }
+      const recap = await saveTicket(draft, { categories, ensureItem, ensureStore })
+      if (fromChat?.conversationId != null) {
+        // Retour dans la conversation : la fiche du ticket passe à « enregistré »
+        await patchConversationMessage(fromChat.conversationId, fromChat.messageIndex, { content: ticketText(draft, categories, recap), ticket: { draft, recap } })
+        navigate('/assistant')
+        return
       }
-      must(await supabase.from('purchases').insert(payload))
-      setSaved(recap)
+      setSaved(recap.lines)
       setStep('fini')
     } catch (e) {
       setError((e as Error).message)
@@ -284,7 +236,7 @@ export default function Ticket() {
         </>
       )}
 
-      <Link to="/saisie" className="small">← Saisie manuelle</Link>
+      {fromChat ? <Link to="/assistant" className="small">← Retour à l'assistant (sans enregistrer)</Link> : <Link to="/saisie" className="small">← Saisie manuelle</Link>}
     </div>
   )
 }

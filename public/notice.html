@@ -175,12 +175,13 @@
       <img src="./icon-192.png" alt="" width="76" height="76" />
       <div>
         <h1>Comptes : le mode d'emploi</h1>
-        <p class="lead">Tout ce qu'il faut savoir pour encoder ses achats au magasin et garder un œil sur son budget, au fil d'une journée type.</p>
+        <p class="lead">L'application s'ouvre sur l'<strong>assistant</strong>. Deux gestes suffisent : <strong>photographier ses tickets</strong> et <strong>lui parler</strong>. Il enregistre, corrige, supprime et répond à vos questions. Le tableau de bord et les autres pages servent à regarder où vous en êtes (et à corriger à la main si vous préférez).</p>
       </div>
     </div>
 
     <div class="summary">
-      <div class="card"><span class="emoji" aria-hidden="true">🛒</span><div><strong>Encoder au magasin</strong><p>Chaque achat en quelques touches, directement sur le téléphone. Fini les tickets qui s'entassent.</p></div></div>
+      <div class="card"><span class="emoji" aria-hidden="true">📷</span><div><strong>Un ticket, une photo</strong><p>L'application lit les achats ; vous vérifiez et touchez « Tout enregistrer ».</p></div></div>
+      <div class="card"><span class="emoji" aria-hidden="true">🎤</span><div><strong>Une phrase à l'assistant</strong><p>« J'ai payé 12 € chez le boucher » : il résume, vous validez. Il répond aussi à voix haute.</p></div></div>
       <div class="card"><span class="emoji" aria-hidden="true">📊</span><div><strong>Suivre le budget</strong><p>L'application additionne tout, prévoit la fin du mois et prévient quand une catégorie dérape.</p></div></div>
       <div class="card"><span class="emoji" aria-hidden="true">🏷️</span><div><strong>Surveiller les prix</strong><p>Pour chaque produit, l'évolution du prix dans chaque magasin, et où il est le moins cher.</p></div></div>
     </div>
@@ -191,9 +192,10 @@
       <h2>Le scénario, étape par étape</h2>
       <ol>
         <li><a href="#installer"><span class="num">1</span><span>Installer et se connecter<span class="time">La première fois</span></span></a></li>
-        <li><a href="#accueil"><span class="num">2</span><span>Le coup d'œil du matin<span class="time">Au petit-déjeuner</span></span></a></li>
+        <li><a href="#essentiel"><span class="num">★</span><span>L'essentiel en deux gestes<span class="time">Tous les jours</span></span></a></li>
+        <li><a href="#accueil"><span class="num">2</span><span>Le tableau de bord<span class="time">Au petit-déjeuner</span></span></a></li>
         <li><a href="#courses"><span class="num">3</span><span>Préparer les courses au meilleur prix<span class="time">Avant de partir</span></span></a></li>
-        <li><a href="#saisie"><span class="num">4</span><span>Encoder ses achats<span class="time">Au magasin</span></span></a></li>
+        <li><a href="#saisie"><span class="num">4</span><span>Encoder à la main<span class="time">Si besoin</span></span></a></li>
         <li><a href="#detail"><span class="num">5</span><span>Vérifier et corriger<span class="time">De retour à la maison</span></span></a></li>
         <li><a href="#global"><span class="num">6</span><span>Le Global : essence, factures, épargne<span class="time">Quand une facture tombe</span></span></a></li>
         <li><a href="#analyses"><span class="num">7</span><span>Faire le point et fixer ses budgets<span class="time">Le dimanche</span></span></a></li>
@@ -225,14 +227,68 @@
       </div>
     </section>
 
+    <!-- ★ ------------------------------------------------------------------ -->
+    <section class="chapter" id="essentiel">
+      <div class="chapter-head"><span class="num">★</span><h2 class="chapter-title">L'essentiel en deux gestes</h2></div>
+      <p class="moment">Tous les jours : un ticket en photo, une phrase à l'assistant. Rien d'autre à faire.</p>
+
+      <div class="step duo">
+        <div>
+          <h3>📷 Photographier un ticket</h3>
+          <p>L'application s'ouvre sur l'assistant. Touchez <span class="ui">📷 Ticket</span>, posez le ticket bien à plat et photographiez-le en entier.</p>
+          <p>Une vingtaine de secondes plus tard, une fiche <strong>« Voici ce que j'ai lu »</strong> apparaît dans la conversation : le magasin, la date, chaque article avec son prix, et si le total correspond au ticket. Une ligne difficile à lire est surlignée en jaune avec ⚠.</p>
+          <p><strong>Vérifiez avec le ticket</strong>, puis touchez <span class="ui">✓ Tout enregistrer</span>. Rien n'est enregistré avant. Une ligne fausse ? Touchez <span class="ui">✏️ Corriger une ligne</span>, ou enregistrez puis dites simplement à l'assistant « le beurre coûtait 2,29 € ».</p>
+        </div>
+        <figure class="phone"><img src="./notice/e1-ouverture.webp" alt="L'assistant à l'ouverture : boutons Ticket et Parler" loading="lazy" width="390" height="780" /><figcaption>L'écran d'ouverture</figcaption></figure>
+        <figure class="phone"><img src="./notice/e2-ticket-fiche.webp" alt="Fiche du ticket lu dans la conversation : magasin, date, articles, total" loading="lazy" width="390" height="780" /><figcaption>Ce qui a été lu</figcaption></figure>
+      </div>
+
+      <div class="step duo">
+        <div>
+          <h3>🎤 Parler à l'assistant</h3>
+          <p>Touchez <span class="ui">🎤 Parler</span> et dites ce que vous voulez, naturellement : <em>« J'ai payé 12,50 € chez le boucher aujourd'hui »</em>, <em>« le plein d'essence, 58 € chez Shell »</em>, <em>« combien ai-je dépensé ce mois-ci ? »</em>. Quand vous vous arrêtez de parler, la phrase part toute seule (ou touchez <span class="ui">⏹ Envoyer</span>).</p>
+          <p><strong>Pour une dépense dictée, l'assistant montre toujours un résumé</strong> de ce qu'il a compris (quoi, combien, quand, où, quel mois) et demande <em>« Je l'enregistre ? »</em>. Touchez <span class="ui">✓ Oui, j'enregistre</span> ou <span class="ui">✗ Non</span>, ou répondez « oui » à voix haute. Rien n'est enregistré sans votre accord.</p>
+          <p><strong>Il vous répond à voix haute</strong> quand vous lui avez parlé. Sous chaque réponse, <span class="ui">🔊 Écouter</span> la relit.</p>
+          <p>Il peut aussi <strong>corriger</strong> (« le croissant coûtait 1,20 € ») ou <strong>supprimer</strong> (« supprime ce que je viens d'encoder ») : il montre d'abord ce qu'il va faire. Et « annule » défait sa dernière action.</p>
+          <p class="tip"><strong>Le micro</strong>La première fois, le téléphone demande l'autorisation d'utiliser le micro : touchez <strong>Autoriser</strong>. La dictée a besoin d'internet.</p>
+        </div>
+        <figure class="phone"><img src="./notice/e4-validation.webp" alt="Résumé d'une dépense dictée avec les boutons Oui, j'enregistre et Non" loading="lazy" width="390" height="780" /><figcaption>Le résumé à valider</figcaption></figure>
+        <figure class="phone"><img src="./notice/e3-ticket-enregistre.webp" alt="Ticket enregistré : récapitulatif dans la conversation" loading="lazy" width="390" height="780" /><figcaption>Ticket enregistré</figcaption></figure>
+      </div>
+
+      <div class="step">
+        <div>
+          <h3>Il peut tout faire</h3>
+          <p>Demandez-lui simplement, par écrit ou à voix haute :</p>
+          <ul>
+            <li><strong>ajouter</strong> : un achat, la pension ou une dépense fixe du mois, un plein, un trajet, le paiement d'une facture annuelle, un mouvement d'épargne, un nouveau poste annuel ;</li>
+            <li><strong>corriger</strong> : un montant, une date, un magasin, le loyer de ce mois, le nom ou la catégorie d'un article, son icône, le budget d'une catégorie, le plafond annuel, la réserve « imprévus », le solde de début de mois ;</li>
+            <li><strong>supprimer</strong> : un achat, une ligne du mois, un plein, un paiement… (il montre d'abord ce qu'il va supprimer et attend votre « oui ») ;</li>
+            <li><strong>répondre</strong> : combien ce mois-ci, ce qui augmente, les factures à prévoir, où acheter moins cher.</li>
+          </ul>
+          <p>« <em>Annule</em> » défait toujours sa dernière action.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div>
+          <h3>L'assistant sur chaque écran</h3>
+          <p>Sur le Détail, le Global, les Analyses… la <strong>bulle verte</strong> en bas à droite ouvre l'assistant <strong>par-dessus l'écran</strong> : vous gardez vos chiffres sous les yeux pendant que vous lui posez une question ou lui demandez une correction. Il sait quel écran et quel mois vous regardez.</p>
+          <p>Quand il modifie quelque chose, l'écran derrière se met à jour tout seul. <span class="ui">✕ Fermer</span> referme le panneau.</p>
+        </div>
+        <figure class="phone"><img src="./notice/e5-panneau.webp" alt="Assistant ouvert par-dessus le détail du mois" loading="lazy" width="390" height="780" /></figure>
+      </div>
+    </section>
+
     <!-- 2 ------------------------------------------------------------------ -->
     <section class="chapter" id="accueil">
-      <div class="chapter-head"><span class="num">2</span><h2 class="chapter-title">Le coup d'œil du matin</h2></div>
+      <div class="chapter-head"><span class="num">2</span><h2 class="chapter-title">Le coup d'œil du matin : le tableau de bord</h2></div>
       <p class="moment">Au petit-déjeuner : où en est le mois ?</p>
 
       <div class="step duo">
         <div>
-          <h3>L'écran d'accueil résume tout</h3>
+          <h3>Le tableau de bord résume tout</h3>
+          <p>Touchez <span class="ui">Tableau</span> dans la barre du bas.</p>
           <p>En haut, le <strong>mois affiché</strong>. Le mois commence le <strong>26</strong>, jour de la pension : « octobre » va du 26 septembre au 25 octobre. <strong>Le 26, l'application passe toute seule au mois suivant.</strong> Les flèches <kbd>‹</kbd> <kbd>›</kbd> permettent de revoir un autre mois.</p>
           <p>Quatre cadres donnent l'essentiel :</p>
           <ul>
@@ -249,9 +305,9 @@
             <li>trait <strong style="color:#2a78d6">bleu</strong> : une facture annuelle arrive bientôt, il faut la prévoir.</li>
           </ul>
           <p>Plus bas, une barre par catégorie montre ce qui est dépensé par rapport au budget.</p>
-          <p>Les boutons du haut mènent directement à la <strong>saisie</strong>, à la <strong>liste de courses</strong>, au <strong>scan d'un ticket de caisse</strong> (étape 4) et aux <strong>meilleurs prix</strong> (étape 3).</p>
+          <p>En haut, <strong>📷 Ticket</strong> et <strong>🎤 Parler</strong> ouvrent l'assistant. Tout en bas : <strong>+ Encoder à la main</strong>, la <strong>liste de courses</strong> et les <strong>meilleurs prix</strong> (étape 3).</p>
         </div>
-        <figure class="phone"><img src="./notice/02-accueil.webp" alt="Accueil : dépenses courantes, solde de fin de mois, épargne, dépenses annuelles" loading="lazy" width="390" height="780" /><figcaption>Le résumé du mois</figcaption></figure>
+        <figure class="phone"><img src="./notice/02-accueil.webp" alt="Tableau de bord : dépenses courantes, solde de fin de mois, épargne, dépenses annuelles" loading="lazy" width="390" height="780" /><figcaption>Le résumé du mois</figcaption></figure>
         <figure class="phone"><img src="./notice/03-accueil-alertes.webp" alt="Alertes et barres de budget par catégorie" loading="lazy" width="390" height="780" /><figcaption>Les alertes et les barres par catégorie</figcaption></figure>
       </div>
     </section>
@@ -279,7 +335,7 @@
       <div class="step duo">
         <div>
           <h3>Où mes produits sont-ils les moins chers ?</h3>
-          <p>En haut de la page Courses, touchez <span class="ui">Meilleurs prix</span>. Vous y arrivez aussi par le bouton <span class="ui">🏷️ Où sont mes produits les moins chers ?</span> de l'accueil.</p>
+          <p>En haut de la page Courses, touchez <span class="ui">Meilleurs prix</span>. Vous y arrivez aussi par le bouton <span class="ui">🏷️ Où sont mes produits les moins chers ?</span> du tableau de bord.</p>
           <p>Les prix des magasins y sont <strong>relevés régulièrement</strong>. La date de la dernière mise à jour est indiquée en haut de la page.</p>
           <ul>
             <li><strong>Les magasins les moins chers</strong> : pour combien de vos produits chaque magasin propose le meilleur prix. C'est utile pour choisir où faire ses courses de la semaine.</li>
@@ -296,13 +352,13 @@
 
     <!-- 4 ------------------------------------------------------------------ -->
     <section class="chapter" id="saisie">
-      <div class="chapter-head"><span class="num">4</span><h2 class="chapter-title">Encoder ses achats</h2></div>
-      <p class="moment">Au magasin ou de retour à la maison, ticket de caisse en main.</p>
+      <div class="chapter-head"><span class="num">4</span><h2 class="chapter-title">Encoder à la main</h2></div>
+      <p class="moment">Si besoin : corriger un ticket ligne par ligne, ou encoder sans ticket ni assistant.</p>
 
       <div class="step duo">
         <div>
-          <h3>Le plus rapide : scanner le ticket</h3>
-          <p>Touchez <span class="ui">📷 Scanner un ticket de caisse</span>, en haut de la Saisie ou sur l'accueil, puis <span class="ui">Prendre une photo</span>. Posez le ticket bien à plat et photographiez-le en entier.</p>
+          <h3>Corriger un ticket ligne par ligne</h3>
+          <p>Le bouton <span class="ui">✏️ Corriger une ligne</span> d'une fiche de ticket ouvre cet écran détaillé. Il s'ouvre aussi depuis <span class="ui">+ Encoder à la main</span> → <span class="ui">📷 Scanner un ticket de caisse</span>.</p>
           <p>Après une vingtaine de secondes, un cadre <strong>« Voici ce que j'ai lu »</strong> résume la lecture : le <strong>magasin</strong>, la <strong>date</strong>, le <strong>nombre d'articles</strong> et le <strong>total</strong>. Il dit aussi si le total des articles correspond au ticket, et combien de lignes étaient difficiles à lire. Touchez la petite photo pour l'agrandir et comparer.</p>
           <p>En dessous, <strong>chaque article</strong> est déjà rangé dans sa catégorie, avec son icône. Les réductions (Lidl Plus, promos) sont déduites, et les fruits et légumes pesés gardent leur poids et leur prix au kilo.</p>
           <p><strong>À vous de vérifier chaque ligne</strong> en la comparant au ticket : touchez un nom, une catégorie ou un montant pour le corriger, et décochez ce qui ne doit pas être enregistré. Une ligne encadrée en jaune, avec la mention « à vérifier », était difficile à lire.</p>
@@ -326,7 +382,7 @@
       <div class="step">
         <div>
           <h3>① Choisir la catégorie</h3>
-          <p>Touchez <span class="ui">+ Saisie</span> en bas de l'écran (ou <span class="ui">+ Encoder une dépense</span> sur l'accueil).</p>
+          <p>En bas du tableau de bord, touchez <span class="ui">+ Encoder à la main</span>.</p>
           <p>Pas besoin de choisir le mois : chaque achat est compté <strong>d'après la date du ticket</strong>, et le mois commence le 26. Touchez la catégorie, ici <strong>Légumes</strong>.</p>
         </div>
         <figure class="phone"><img src="./notice/04-saisie-categorie.webp" alt="Choix de la catégorie" loading="lazy" width="390" height="780" /></figure>
@@ -435,7 +491,7 @@
           <p>Les grosses dépenses de l'année : taxe et assurance voiture, assurance incendie, eau, hospitalisation…</p>
           <ul>
             <li>Quand vous payez une facture, touchez <span class="ui">+ payé</span> sur la bonne ligne. Si elle est payée avec l'épargne, laissez la case cochée : l'onglet Épargne est mis à jour en même temps.</li>
-            <li>Indiquez le <strong>mois d'échéance</strong> de chaque poste (touchez son nom) : l'accueil vous préviendra à l'avance.</li>
+            <li>Indiquez le <strong>mois d'échéance</strong> de chaque poste (touchez son nom) : le tableau de bord vous préviendra à l'avance.</li>
           </ul>
           <h3>Onglet « Épargne »</h3>
           <p>Le solde du compte épargne et ses mouvements. Avec <span class="ui">+ Ajouter</span>, un montant <strong>positif</strong> est un versement, un montant <strong>négatif</strong> (avec un signe −) est une dépense ou un transfert vers le compte courant.</p>
@@ -456,7 +512,7 @@
           <p>Touchez <span class="ui">Analyses</span> en bas. Le graphique montre les dépenses de chaque mois. Touchez une catégorie (Légumes, Pain…) pour ne voir qu'elle, et touchez une colonne pour lire le montant exact.</p>
           <h3>Orienter le budget</h3>
           <p>Pour chaque catégorie, l'application affiche ce mois-ci et la moyenne des 3 et 6 derniers mois. Une <strong>tendance</strong> en rouge signale une hausse.</p>
-          <p>Tapez un <strong>budget mensuel</strong> dans la case, ou touchez le montant proposé (par exemple <span class="ui">45,00 € ?</span>) pour l'accepter. Ces budgets alimentent les barres et les alertes de l'accueil, ainsi que la liste de courses.</p>
+          <p>Tapez un <strong>budget mensuel</strong> dans la case, ou touchez le montant proposé (par exemple <span class="ui">45,00 € ?</span>) pour l'accepter. Ces budgets alimentent les barres et les alertes du tableau de bord, ainsi que la liste de courses.</p>
           <h3>Prévision sur 12 mois</h3>
           <p>Tout en bas, l'application estime ce qu'il restera sur l'année, au rythme actuel. C'est le bon endroit pour <strong>prévoir les imprévus</strong> : si la marge est positive, elle indique combien mettre de côté chaque mois.</p>
         </div>
@@ -498,7 +554,7 @@
       <div class="step duo">
         <div>
           <h3>Ouvrir l'assistant</h3>
-          <p>Touchez la <strong>bulle verte</strong> en bas à droite de l'écran. Écrivez votre question comme vous la diriez, ou touchez une des questions proposées, puis <span class="ui">Envoyer</span>.</p>
+          <p>Touchez <span class="ui">Assistant</span> dans la barre du bas, ou la <strong>bulle verte</strong> sur n'importe quel écran. <strong>Parlez</strong> (🎤), <strong>écrivez</strong>, ou touchez une des questions proposées.</p>
           <p>Pendant qu'il travaille, une <strong>pièce qui tourne</strong> et des petits messages vous disent où il en est : « Je consulte vos comptes… », « Je compare les magasins… ».</p>
         </div>
         <figure class="phone"><img src="./notice/25-assistant.webp" alt="Assistant : questions proposées" loading="lazy" width="390" height="780" /><figcaption>Les questions proposées</figcaption></figure>
@@ -516,13 +572,17 @@
           <p>Si l'assistant trouve des prix intéressants, demandez-lui « <em>enregistre ces prix</em> » : ils apparaîtront dans <span class="ui">Meilleurs prix</span>.</p>
           <p><strong>Il retient vos préférences.</strong> Dites-lui par exemple « je préfère les montants sans centimes » ou « je fais mes courses le mardi » : il s'en souviendra les fois suivantes. Pour qu'il oublie, dites-le-lui simplement.</p>
           <p><strong>Il peut encoder pour vous.</strong> Dites par exemple « <em>j'ai acheté du pain gris à 3,20 € à la boulangerie aujourd'hui, ajoute-le</em> » ou « <em>ajoute la pension de 1 850 €</em> ». Avant d'enregistrer, il <strong>vérifie que ce n'est pas déjà encodé</strong> (même article à un jour près, même montant…) et vous prévient s'il trouve un doublon possible. Il dit toujours ce qu'il a ajouté, et dans quel mois.</p>
-          <p><strong>Une erreur ?</strong> Dites simplement « <em>annule</em> » : il retire ce qu'il vient d'ajouter, ou remet l'ancien montant s'il en avait modifié un.</p>
+          <p><strong>Il peut aussi supprimer.</strong> « <em>Supprime le croissant que je viens d'encoder</em> », « <em>retire l'article Bdin, c'est un doublon</em> » : il vous montre d'abord exactement ce qu'il va supprimer et vous demande « Je supprime bien ceci ? ». Rien n'est effacé avant votre « oui ».</p>
+          <p><strong>Une erreur ?</strong> Dites simplement « <em>annule</em> » : il retire ce qu'il vient d'ajouter, remet ce qu'il vient de supprimer, ou remet l'ancien montant s'il en avait modifié un.</p>
           <p><strong>Vos remarques sont vérifiées.</strong> Si vous lui dites « il manque mes œufs du 4 octobre » ou « ce montant est faux », il regarde dans vos comptes et vous explique ce qu'il trouve.</p>
-          <p class="tip"><strong>Patience pour les prix</strong>Une question sur vos comptes prend quelques secondes. Une recherche de prix sur internet peut prendre <strong>une à deux minutes</strong> : laissez l'écran ouvert. Certains magasins (Colruyt, Aldi) n'affichent pas tous leurs prix en ligne ; l'assistant vous le dira.</p>
+          <p><strong>Vos conversations sont gardées</strong> sur votre compte : en ouvrant l'assistant sur le GSM, la tablette ou l'ordinateur, vous retrouvez la dernière conversation là où vous l'aviez laissée. Le bouton <span class="ui">Conversations</span>, en haut, liste les précédentes : touchez-en une pour la reprendre, ou 🗑 pour la supprimer. <span class="ui">+ Nouvelle</span> commence une nouvelle conversation, sans effacer les autres.</p>
+          <p>Dans une longue conversation, l'assistant résume de lui-même les anciens messages pour rester rapide et bon marché : vous n'avez rien à faire, et tout reste affiché à l'écran.</p>
+          <p class="tip"><strong>Patience pour les prix</strong>Une question sur vos comptes prend quelques secondes. Une recherche de prix sur internet peut prendre <strong>une à deux minutes</strong> : laissez l'écran ouvert. Certains magasins (Colruyt, Aldi) n'affichent pas tous leurs prix en ligne ; l'assistant vous le dira. Une recherche trop longue est écourtée automatiquement pour limiter les frais : il répond alors avec ce qu'il a déjà trouvé.</p>
           <p class="note"><strong>Il peut se tromper</strong>Vérifiez les prix en magasin. Et si l'assistant remarque quelque chose d'anormal dans l'application (un total qui ne colle pas, un article en double…), il le signale automatiquement pour que ce soit corrigé, et vous le dit.</p>
         </div>
         <figure class="phone"><img src="./notice/27-assistant-reponse.webp" alt="Réponse de l'assistant : où acheter les bananes le moins cher" loading="lazy" width="390" height="780" /><figcaption>La réponse, avec ses sources</figcaption></figure>
         <figure class="phone"><img src="./notice/27b-assistant-ajout.webp" alt="L'assistant vérifie l'absence de doublon puis enregistre un achat de pain" loading="lazy" width="390" height="780" /><figcaption>Il vérifie, puis enregistre</figcaption></figure>
+        <figure class="phone"><img src="./notice/27c-assistant-conversations.webp" alt="Liste des conversations précédentes avec l'assistant" loading="lazy" width="390" height="780" /><figcaption>Les conversations gardées</figcaption></figure>
       </div>
     </section>
 
@@ -546,7 +606,7 @@
         <summary>Les textes sont trop petits.</summary>
         <p>Touchez la roue dentée ⚙ en haut à gauche. Tout en haut, dans <strong>Taille du texte</strong>, choisissez <span class="ui">Grand</span> ou <span class="ui">Très grand</span> : tout l'écran grandit aussitôt. Le réglage est propre à chaque appareil (GSM, tablette).</p>
         <figure class="phone" style="margin-top: 12px"><img src="./notice/28-taille-texte.webp" alt="Paramètres : réglage de la taille du texte" loading="lazy" width="390" height="780" /></figure>
-        <figure class="phone" style="margin-top: 12px"><img src="./notice/29-accueil-grand.webp" alt="Écran d'accueil en grand texte" loading="lazy" width="390" height="780" /></figure>
+        <figure class="phone" style="margin-top: 12px"><img src="./notice/29-accueil-grand.webp" alt="Tableau de bord en grand texte" loading="lazy" width="390" height="780" /></figure>
       </details>
       <details>
         <summary>Changer l'icône d'un article.</summary>
