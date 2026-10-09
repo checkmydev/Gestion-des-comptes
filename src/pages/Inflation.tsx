@@ -14,7 +14,7 @@ type Row = StoreTrend & { itemId: number; itemName: string; categoryName: string
  * les prix (forfaitaire ou €/kg, hors promo) dans le temps.
  */
 export default function Inflation() {
-  const { categories, items, storeById } = useApp()
+  const { categories, items, storeById, isWeighedItem } = useApp()
   const navigate = useNavigate()
   const tracked = useMemo(() => categories.filter((c) => c.track_inflation), [categories])
   const [catFilter, setCatFilter] = useState<number | 'all'>('all')
@@ -43,12 +43,12 @@ export default function Inflation() {
       const item = items.find((i) => i.id === itemId)
       if (!item) continue
       const cat = categories.find((c) => c.id === item.category_id)
-      for (const t of trendsByStore(pointsFromPurchases(ps, (id) => storeById(id)?.name ?? 'Sans magasin'))) {
+      for (const t of trendsByStore(pointsFromPurchases(ps, (id) => storeById(id)?.name ?? 'Sans magasin', isWeighedItem))) {
         out.push({ ...t, itemId, itemName: item.name, categoryName: cat?.name ?? '' })
       }
     }
     return out
-  }, [purchases, items, categories, storeById])
+  }, [purchases, items, categories, storeById, isWeighedItem])
 
   if (error) return <p className="error">{error}</p>
   if (!purchases) return <Loading />
@@ -71,7 +71,8 @@ export default function Inflation() {
       <h1>Inflation des prix</h1>
       <p className="muted small">
         Catégories suivies : {tracked.map((c) => c.name).join(', ') || 'aucune (à choisir dans les paramètres)'}.
-        Prix comparés hors promo, par magasin. Touchez une ligne pour voir le graphique.
+        Prix comparés hors promo, par magasin, à l'unité (ou au kilo). Les légumes encodés sans poids ni €/kg ne sont pas comparés.
+        « ⚠ à vérifier » : écart de plus de 50 %, souvent un format différent (pack, taille…). Touchez une ligne pour voir le graphique.
       </p>
 
       <div className="kpis">
@@ -109,6 +110,9 @@ export default function Inflation() {
                   <td className="num">{eur(r.last.value)}<div className="muted small">{longDate(r.last.date)}</div></td>
                   <td className={`num strong ${r.changePct > 0.05 ? 'up' : r.changePct < -0.05 ? 'down' : ''}`}>
                     {r.points.length > 1 ? pct(r.changePct) : '—'}
+                    {r.points.length > 1 && Math.abs(r.changePct) >= 50 && (
+                      <div className="small" style={{ color: 'var(--muted)', fontWeight: 400 }} title="Écart très important : souvent un format ou une quantité différente">⚠ à vérifier</div>
+                    )}
                   </td>
                 </tr>
               ))}

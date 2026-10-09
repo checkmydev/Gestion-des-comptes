@@ -62,6 +62,7 @@ create table purchases (
   quantity_g   numeric(10,1),                  -- catégories « pesées » uniquement
   price_per_kg numeric(10,2),
   promo_pct    numeric(5,2),
+  units        numeric(8,2),                   -- nombre d'unités achetées (vide = 1)
   amount       numeric(10,2) not null,         -- montant payé
   note         text,
   created_at   timestamptz not null default now()

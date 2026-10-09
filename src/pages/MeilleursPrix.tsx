@@ -23,7 +23,7 @@ export function CoursesTabs() {
  * (recherches de prix, mises à jour sur demande) avec ce qui est payé d'habitude.
  */
 export default function MeilleursPrix() {
-  const { items, categories, storeById } = useApp()
+  const { items, categories, storeById, isWeighedItem } = useApp()
   const [data, setData] = useState<{ refs: PriceReference[]; purchases: Purchase[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -42,8 +42,8 @@ export default function MeilleursPrix() {
   }, [])
 
   const products = useMemo(
-    () => (data ? compareProducts(items, categories, data.refs, data.purchases, (id) => storeById(id)?.name ?? null) : []),
-    [data, items, categories, storeById],
+    () => (data ? compareProducts(items, categories, data.refs, data.purchases, (id) => storeById(id)?.name ?? null, isWeighedItem) : []),
+    [data, items, categories, storeById, isWeighedItem],
   )
 
   if (error) return <p className="error">{error}</p>

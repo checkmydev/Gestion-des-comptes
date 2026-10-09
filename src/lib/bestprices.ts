@@ -1,4 +1,4 @@
-import { unitPrice, type Unit } from './prices'
+import { isComparable, unitPrice, type Unit } from './prices'
 import type { Category, Item, PriceReference, Purchase } from './types'
 
 export interface StorePrice {
@@ -34,12 +34,14 @@ export function compareProducts(
   refs: PriceReference[],
   purchases: Purchase[],
   storeName: (id: number | null) => string | null,
+  isWeighed: (itemId: number) => boolean,
 ): ProductComparison[] {
   const refsByItem = new Map<number, PriceReference[]>()
   for (const r of refs) refsByItem.set(r.item_id, [...(refsByItem.get(r.item_id) ?? []), r])
 
   const lastPaid = new Map<number, Purchase>()
   for (const p of purchases) {
+    if (!isComparable(p, isWeighed(p.item_id))) continue
     const cur = lastPaid.get(p.item_id)
     if (!cur || (p.purchased_on ?? '') > (cur.purchased_on ?? '') || ((p.purchased_on ?? '') === (cur.purchased_on ?? '') && p.id > cur.id)) {
       lastPaid.set(p.item_id, p)

@@ -1,4 +1,4 @@
-import { unitPrice } from './prices'
+import { isComparable, unitPrice } from './prices'
 import type { Category, Item, PriceReference, Purchase } from './types'
 
 const DAY = 864e5
@@ -78,9 +78,10 @@ export function planShopping(input: Input): CategoryPlan[] {
     const estimate = Math.round(median(sorted.slice(-3).map((p) => Number(p.amount))) * 100) / 100
 
     // Magasin le moins cher récemment (prix payés et prix relevés des 90 derniers jours, même unité).
-    const lastUnit = unitPrice(sorted[sorted.length - 1]).unit
+    const comparable = sorted.filter((p) => isComparable(p, category.weighed))
+    const lastUnit = comparable.length ? unitPrice(comparable[comparable.length - 1]).unit : 'piece'
     const candidates = [
-      ...sorted.filter((p) => days(p.purchased_on!, today) <= 90).map((p) => ({ ...unitPrice(p), name: input.storeName(p.store_id), reference: false })),
+      ...comparable.filter((p) => days(p.purchased_on!, today) <= 90).map((p) => ({ ...unitPrice(p), name: input.storeName(p.store_id), reference: false })),
       ...references.filter((r) => r.item_id === itemId && days(r.observed_on, today) <= 90)
         .map((r) => ({ value: Number(r.price), unit: r.unit, name: r.store_name, reference: true })),
     ].filter((c) => c.name && c.unit === lastUnit)

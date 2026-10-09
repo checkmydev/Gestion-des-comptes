@@ -46,7 +46,7 @@ if (args.includes('--list')) {
   const ids = items.filter((i) => tracked.has(i.category_id)).map((i) => i.id)
   const last = new Map()
   for (let i = 0; i < ids.length; i += 150) {
-    const rows = must(await sb.from('purchases').select('item_id, amount, price_per_kg, purchased_on, stores(name)')
+    const rows = must(await sb.from('purchases').select('item_id, amount, units, price_per_kg, purchased_on, stores(name)')
       .in('item_id', ids.slice(i, i + 150)).order('purchased_on', { ascending: true }))
     for (const r of rows) last.set(r.item_id, r)
   }
@@ -54,7 +54,7 @@ if (args.includes('--list')) {
     const p = last.get(i.id)
     return {
       categorie: catName(i.category_id), article: i.name,
-      dernier_prix: p ? (p.price_per_kg != null ? `${p.price_per_kg} €/kg` : `${p.amount} €`) : '',
+      dernier_prix: p ? (p.price_per_kg != null ? `${p.price_per_kg} €/kg` : `${Math.round((p.amount / (p.units || 1)) * 100) / 100} € pièce`) : '',
       magasin: p?.stores?.name ?? '', date: p?.purchased_on ?? '',
     }
   })

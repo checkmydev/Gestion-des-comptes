@@ -38,6 +38,8 @@ export function PurchaseForm({ category, item, period, purchase, defaultStoreId,
   const [amount, setAmount] = useState(txt(purchase?.amount))
   const [amountTouched, setAmountTouched] = useState(Boolean(purchase))
   const [note, setNote] = useState(purchase?.note ?? '')
+  const [units, setUnits] = useState(txt(purchase?.units))
+  const [unitsAuto, setUnitsAuto] = useState(false)
   const [last, setLast] = useState<Purchase | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +55,11 @@ export function PurchaseForm({ category, item, period, purchase, defaultStoreId,
     () => computeAmount(parseAmount(qty), parseAmount(ppk), parseAmount(promo)),
     [qty, ppk, promo],
   )
+
+  // Nombre d'unités (articles à la pièce) et prix unitaire affiché en aide
+  const unitCount = Math.max(1, Math.round(parseAmount(units) ?? 1))
+  const paidValue = parseAmount(amount)
+  const unitHint = unitCount > 1 && paidValue != null ? `soit ${eur(paidValue / unitCount)} pièce` : null
 
   // Le montant suit le calcul tant que l'utilisateur ne l'a pas modifié lui-même.
   useEffect(() => {
@@ -79,6 +86,7 @@ export function PurchaseForm({ category, item, period, purchase, defaultStoreId,
         quantity_g: category.weighed ? parseAmount(qty) : null,
         price_per_kg: category.weighed ? parseAmount(ppk) : null,
         promo_pct: parseAmount(promo),
+        units: !category.weighed && unitCount > 1 ? unitCount : null,
         amount: value,
         note: note.trim() || null,
       }
@@ -105,7 +113,9 @@ export function PurchaseForm({ category, item, period, purchase, defaultStoreId,
     <form className="stack" onSubmit={submit}>
       {last && (
         <p className="alert info small">
-          Dernier achat : <strong>{eur(last.amount)}</strong> — {storeDate(storeById(last.store_id)?.name, last.purchased_on) || 'sans magasin'}
+          Dernier achat : <strong>{eur(last.amount)}</strong>
+          {last.units && Number(last.units) > 1 ? <> pour {num(last.units)} ({eur(Number(last.amount) / Number(last.units))} pièce)</> : null}
+          {' '}— {storeDate(storeById(last.store_id)?.name, last.purchased_on) || 'sans magasin'}
           {last.price_per_kg != null && <> ({num(last.price_per_kg)} €/kg)</>}
           {' · '}<Link to={`/article/${item.id}`}>évolution du prix</Link>
         </p>
@@ -149,21 +159,43 @@ export function PurchaseForm({ category, item, period, purchase, defaultStoreId,
         </div>
       )}
 
-      <label className="field">
-        Montant payé (€)
-        <input
-          inputMode="decimal"
-          value={amount}
-          placeholder="ex. 1,72 ou 2*2,15"
-          onChange={(e) => { setAmount(e.target.value); setAmountTouched(true) }}
-          style={{ fontSize: '1.3rem', fontWeight: 700 }}
-        />
-        {category.weighed && computed != null && amountTouched && parseAmount(amount) !== computed && (
-          <button type="button" className="btn-ghost small" onClick={() => { setAmount(txt(computed)); setAmountTouched(false) }}>
-            Utiliser le calcul : {eur(computed)}
-          </button>
+      <div className={category.weighed ? '' : 'grid2'} style={category.weighed ? undefined : { gridTemplateColumns: '2fr 1fr' }}>
+        <label className="field">
+          Montant payé (€)
+          <input
+            inputMode="decimal"
+            value={amount}
+            placeholder="ex. 1,72 ou 2*2,15"
+            onChange={(e) => {
+              setAmount(e.target.value)
+              setAmountTouched(true)
+              // « 2*3,25 » : 2 unités à 3,25 € → le nombre se remplit tout seul
+              const m = e.target.value.replace(/\s/g, '').match(/^(\d{1,2})\*\d+(?:[.,]\d+)?$/)
+              if (m && !category.weighed && (!units || unitsAuto)) { setUnits(m[1]); setUnitsAuto(true) }
+            }}
+            style={{ fontSize: '1.3rem', fontWeight: 700 }}
+          />
+        </label>
+        {!category.weighed && (
+          <label className="field">
+            Nombre
+            <input inputMode="numeric" value={units} placeholder="1"
+              onChange={(e) => { setUnits(e.target.value); setUnitsAuto(false) }}
+              style={{ fontSize: '1.3rem', fontWeight: 700, textAlign: 'center' }} />
+          </label>
         )}
-      </label>
+      </div>
+      {category.weighed && computed != null && amountTouched && parseAmount(amount) !== computed && (
+        <button type="button" className="btn-ghost small" onClick={() => { setAmount(txt(computed)); setAmountTouched(false) }}>
+          Utiliser le calcul : {eur(computed)}
+        </button>
+      )}
+      {!category.weighed && unitHint && <p className="muted small" style={{ margin: '-8px 0 0' }}>{unitHint}</p>}
+      {category.weighed && !qty && !ppk && (
+        <p className="muted small" style={{ margin: '-8px 0 0' }}>
+          Sans quantité ni €/kg, l'achat compte dans le budget mais pas dans l'évolution des prix.
+        </p>
+      )}
 
       {!category.weighed && (
         <label className="field">

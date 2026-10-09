@@ -30,6 +30,8 @@ export interface Purchase {
   quantity_g: number | null
   price_per_kg: number | null
   promo_pct: number | null
+  /** Nombre d'unités achetées (vide = 1). */
+  units: number | null
   amount: number
   note: string | null
 }

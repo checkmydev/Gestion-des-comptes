@@ -6,14 +6,26 @@ export const UNIT_LABEL: Record<Unit, string> = { kg: '€/kg', piece: '€/piè
 
 /**
  * Prix de comparaison d'un achat, hors promo :
- *  - €/kg s'il est connu (catégories pesées) ;
- *  - sinon le montant forfaitaire, ramené au prix hors promo si une promo est indiquée.
+ *  - €/kg s'il est connu, ou calculé à partir du poids (montant ÷ kg) ;
+ *  - sinon le prix d'une unité : montant ÷ nombre d'unités (2 Edam à 6,50 € → 3,25 €).
  */
 export function unitPrice(p: Purchase): { value: number; unit: Unit } {
-  if (p.price_per_kg != null) return { value: Number(p.price_per_kg), unit: 'kg' }
   const promo = Number(p.promo_pct ?? 0)
-  const value = promo > 0 && promo < 100 ? Number(p.amount) / (1 - promo / 100) : Number(p.amount)
-  return { value: Math.round(value * 100) / 100, unit: 'piece' }
+  const gross = promo > 0 && promo < 100 ? Number(p.amount) / (1 - promo / 100) : Number(p.amount)
+  if (p.price_per_kg != null) return { value: Number(p.price_per_kg), unit: 'kg' }
+  if (p.quantity_g) return { value: Math.round((gross / (Number(p.quantity_g) / 1000)) * 100) / 100, unit: 'kg' }
+  const units = Number(p.units ?? 1) || 1
+  return { value: Math.round((gross / units) * 100) / 100, unit: 'piece' }
+}
+
+/**
+ * Un achat peut-il servir à comparer des prix ? Dans une catégorie pesée
+ * (Légumes), un montant sans poids ni €/kg ne dit rien du prix (une salade,
+ * « quelques carottes ») : il compte dans le budget, pas dans les prix.
+ */
+export function isComparable(p: Purchase, weighed: boolean): boolean {
+  if (!p.purchased_on) return false
+  return !weighed || p.price_per_kg != null || Boolean(p.quantity_g)
 }
 
 export interface PricePoint {
@@ -27,9 +39,13 @@ export interface PricePoint {
   source?: string | null
 }
 
-export function pointsFromPurchases(purchases: Purchase[], storeName: (id: number | null) => string): PricePoint[] {
+export function pointsFromPurchases(
+  purchases: Purchase[],
+  storeName: (id: number | null) => string,
+  isWeighed: (itemId: number) => boolean = () => false,
+): PricePoint[] {
   return purchases
-    .filter((p) => p.purchased_on)
+    .filter((p) => isComparable(p, isWeighed(p.item_id)))
     .map((p) => {
       const u = unitPrice(p)
       return {

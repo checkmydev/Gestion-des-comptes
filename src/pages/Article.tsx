@@ -13,7 +13,7 @@ import type { PriceReference, Purchase } from '../lib/types'
 export default function Article() {
   const { id } = useParams()
   const itemId = Number(id)
-  const { itemById, categoryById, storeById, stores } = useApp()
+  const { itemById, categoryById, storeById, stores, isWeighedItem } = useApp()
   const item = itemById(itemId)
   const [data, setData] = useState<{ purchases: Purchase[]; refs: PriceReference[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -36,7 +36,7 @@ export default function Article() {
   if (!data) return <Loading />
 
   const points = [
-    ...pointsFromPurchases(data.purchases, (sid) => storeById(sid)?.name ?? 'Sans magasin'),
+    ...pointsFromPurchases(data.purchases, (sid) => storeById(sid)?.name ?? 'Sans magasin', isWeighedItem),
     ...pointsFromReferences(data.refs, storeIdByName),
   ]
   const units = [...new Set(points.map((p) => p.unit))]
@@ -73,6 +73,9 @@ export default function Article() {
 
       <section className="card">
         <h2>Évolution du prix ({UNIT_LABEL[activeUnit ?? 'piece']}, hors promo)</h2>
+        {isWeighedItem(itemId) && data.purchases.some((p) => p.price_per_kg == null && !p.quantity_g) && (
+          <p className="muted small" style={{ marginTop: -6 }}>Les achats encodés sans poids ni €/kg ne sont pas repris dans le graphique (ils restent dans l'historique).</p>
+        )}
         <PriceChart series={[...seriesMap.values()]} />
       </section>
 

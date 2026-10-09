@@ -323,11 +323,11 @@
           <ol>
             <li><strong>Magasin</strong> : choisissez-le dans la liste (ou <em>+ Nouveau magasin…</em>).</li>
             <li><strong>Date</strong> : celle du jour est déjà remplie.</li>
-            <li>Pour les <strong>légumes et fruits</strong> : la <strong>quantité en grammes</strong> et le <strong>prix au kilo</strong>. L'application calcule le montant toute seule. Si l'article est en promotion, indiquez le <strong>% de promo</strong>.</li>
-            <li><strong>Montant payé</strong> : pour les autres articles, tapez simplement le prix.</li>
+            <li>Pour les <strong>légumes et fruits</strong> : la <strong>quantité en grammes</strong> et le <strong>prix au kilo</strong>. L'application calcule le montant toute seule. Si l'article est en promotion, indiquez le <strong>% de promo</strong>. Sans poids ni prix au kilo, l'achat compte bien dans le budget, mais pas dans l'évolution des prix.</li>
+            <li><strong>Montant payé</strong> : pour les autres articles, tapez le prix. Si vous en prenez <strong>plusieurs</strong> (2 Edam, 3 bouteilles…), indiquez-le dans la case <strong>Nombre</strong> : l'application compare ainsi le prix <em>d'une pièce</em> d'un achat à l'autre.</li>
           </ol>
           <p>Touchez <span class="ui">Enregistrer</span>.</p>
-          <p class="tip"><strong>Astuce : les petits calculs</strong>Pour deux paquets à 2,15 €, tapez <kbd>2*2,15</kbd> dans le montant : l'application calcule 4,30 €. La virgule et le point fonctionnent tous les deux.</p>
+          <p class="tip"><strong>Astuce : les petits calculs</strong>Pour deux paquets à 2,15 €, tapez <kbd>2*2,15</kbd> dans le montant : l'application calcule 4,30 € et met <strong>2</strong> dans la case Nombre toute seule. La virgule et le point fonctionnent tous les deux.</p>
         </div>
         <figure class="phone"><img src="./notice/06-saisie-infos.webp" alt="Formulaire : magasin, date, quantité, prix au kilo, montant calculé" loading="lazy" width="390" height="780" /></figure>
       </div>
@@ -446,8 +446,10 @@
           <p>Depuis <span class="ui">Analyses</span>, touchez <span class="ui">Inflation des prix →</span>. Pour les légumes et le divers, chaque ligne compare le <strong>premier</strong> et le <strong>dernier prix</strong> d'un article dans un même magasin, hors promotion :</p>
           <ul>
             <li><strong style="color:#d03b3b">+ en rouge</strong> : le prix a augmenté ;</li>
-            <li><strong style="color:#006300">− en vert</strong> : il a baissé.</li>
+            <li><strong style="color:#006300">− en vert</strong> : il a baissé ;</li>
+            <li><strong>⚠ à vérifier</strong> : l'écart dépasse 50 %. C'est souvent un format différent (un pack au lieu d'une pièce, une autre taille) plutôt qu'une vraie hausse.</li>
           </ul>
+          <p>Les prix sont comparés <strong>à la pièce</strong> (grâce à la case Nombre) ou <strong>au kilo</strong>.</p>
           <h3>L'évolution d'un produit</h3>
           <p><strong>Touchez une ligne</strong> pour ouvrir la fiche du produit. Elle montre un graphique avec <strong>une couleur par magasin</strong> et l'historique de tous les achats.</p>
           <p>Les <strong>petits cercles vides</strong> sont des prix relevés dans d'autres magasins. Le cadre jaune indique si on peut trouver moins cher, et de combien.</p>

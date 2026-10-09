@@ -79,7 +79,7 @@ export default function Detail() {
                   <tbody>
                     {rows.map((p) => (
                       <tr key={p.id} className="clickable" onClick={() => setEditing(p)}>
-                        <td>{itemById(p.item_id)?.name}{p.note && <div className="muted small">{p.note}</div>}</td>
+                        <td>{itemById(p.item_id)?.name}{p.units && Number(p.units) > 1 ? <span className="muted"> ×{num(p.units)}</span> : null}{p.note && <div className="muted small">{p.note}</div>}</td>
                         <td>{storeDate(storeById(p.store_id)?.name, p.purchased_on)}</td>
                         {c.weighed && <><td className="num">{num(p.quantity_g)}</td><td className="num">{num(p.price_per_kg)}</td></>}
                         <td className="num">{p.promo_pct ? `${num(p.promo_pct)} %` : ''}</td>

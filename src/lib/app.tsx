@@ -17,6 +17,8 @@ interface AppState {
   categoryById: (id: number) => Category | undefined
   itemById: (id: number) => Item | undefined
   storeById: (id: number | null) => Store | undefined
+  /** L'article appartient-il à une catégorie pesée (prix au kilo) ? */
+  isWeighedItem: (itemId: number) => boolean
   /** Crée l'article s'il n'existe pas encore dans la catégorie. */
   ensureItem: (categoryId: number, name: string) => Promise<Item>
   ensureStore: (name: string) => Promise<Store>
@@ -81,6 +83,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       categoryById: (id) => categories.find((c) => c.id === id),
       itemById: (id) => items.find((i) => i.id === id),
       storeById: (id) => (id == null ? undefined : stores.find((s) => s.id === id)),
+      isWeighedItem: (itemId) => {
+        const it = items.find((i) => i.id === itemId)
+        return Boolean(it && categories.find((c) => c.id === it.category_id)?.weighed)
+      },
       ensureItem: async (categoryId, name) => {
         const existing = items.find((i) => i.category_id === categoryId && norm(i.name) === norm(name))
         if (existing) return existing

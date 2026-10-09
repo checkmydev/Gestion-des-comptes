@@ -107,28 +107,91 @@ function parseStoreDate(raw, month) {
   return { store: alias ?? capitalize(store.toLocaleLowerCase('fr')), date }
 }
 
+const dec = (s) => Number(String(s).replace(',', '.'))
+
 /**
- * « Prunes promo 20% » → nom « Prunes », promo 20
- * « 2 bananes - 1,99€/kg » → nom « Bananes », 1,99 €/kg
+ * Lit le nom d'article tel qu'écrit dans l'Excel et en extrait ce qui n'est
+ * pas le nom du produit :
+ *  « Prunes promo 20% »         → Prunes, promo 20 %
+ *  « 2 bananes - 1,99€/kg »     → Bananes, 1,99 €/kg
+ *  « 4 Edam », « Edam 3 pqts », « Mozza rapée x 2 », « 2x Edam » → nombre d'unités
+ *  « pâtes fusili 500gr », « Purée 750gr », « 2kg farine »      → poids par unité
  */
 function parseItemName(raw, weighed = false) {
   let name = clean(raw)
   let promo = null
   let note = null
   let ppk = null
+  let units = null
+  let grams = null
   // Dans un bloc pesé (Légumes), « Bananes 2,49€ » signifie aussi 2,49 €/kg.
   const k = weighed
     ? name.match(/^(.*?)[\s\-–]*(\d+[.,]\d+)\s*€(?:\s*\/\s*kg)?$/i)
     : name.match(/^(.*?)[\s\-–]*(\d+(?:[.,]\d+)?)\s*€\s*\/\s*kg$/i)
   if (k) {
-    ppk = Number(k[2].replace(',', '.'))
+    ppk = dec(k[2])
     name = k[1].replace(/^\d+\s+(?=\D)/, '') // le nombre de pièces n'a plus d'intérêt avec le €/kg
   }
-  const p = name.match(/^(.*?)\s+promo\s*(\d+)\s*%$/i)
-  if (p) { name = p[1]; promo = Number(p[2]) }
-  else if (/\s+promo$/i.test(name)) { name = name.replace(/\s+promo$/i, ''); note = 'promo' }
-  name = name.replace(/[\s\-–]+$/, '')
-  return { name: capitalize(name), promo, note, ppk }
+  // Promotions : « promo 20% », « promo -25% », « promo 1+1 », « PROMO 2+1 »
+  const pp = name.match(/\s*\bpromo\s*-?\s*(\d+)\s*%/i)
+  if (pp) { promo = Number(pp[1]); name = name.replace(pp[0], ' ') }
+  const pn = name.match(/\s*\bpromo\s*(\d\s*\+\s*\d)/i)
+  if (pn) { note = `promo ${pn[1].replace(/\s/g, '')}`; name = name.replace(pn[0], ' ') }
+  if (/\s+promo\b/i.test(name)) { note = note ?? 'promo'; name = name.replace(/\s+promo\b/i, ' ') }
+  const pn2 = name.match(/\s+(\d\s*\+\s*\d)\s*$/) // « Mozza rapée 1+1 »
+  if (pn2) { note = note ?? `promo ${pn2[1].replace(/\s/g, '')}`; name = name.replace(pn2[0], ' ') }
+  name = clean(name.replace(/[,\s\-–]+$/, ''))
+
+  // Poids par unité : « 500gr », « 750 g », « 1kg », « 1,7kg », « 2k »
+  const w = name.match(/(?:^|\s)(\d+(?:[.,]\d+)?)\s*(kg|k|gr|g)\b\.?/i)
+  if (w) {
+    grams = /^k/i.test(w[2]) ? dec(w[1]) * 1000 : dec(w[1])
+    name = clean(name.replace(w[0], ' '))
+  }
+  // Nombre d'unités
+  let u
+  if ((u = name.match(/^(\d{1,2})\s*x\s*(?=\D)(.+)$/i))) { units = Number(u[1]); name = u[2] }                 // 2x Edam, 3 x Edam
+  else if ((u = name.match(/^(.+?)\s*\bx\s*(\d{1,2})$/i))) { units = Number(u[2]); name = u[1] }              // Mozza rapée x 2
+  else if ((u = name.match(/^(.+?)\s+(\d{1,2})\s*x$/i))) { units = Number(u[2]); name = u[1] }                // pâtes fusili 2x (500gr)
+  else if ((u = name.match(/^(.+?)\s+(\d{1,2})\s*(pqts?|paquets?|pcs|pièces?|bouteilles?|boîtes?)\.?$/i))) { units = Number(u[2]); name = u[1] } // Edam 3 pqts
+  else if ((u = name.match(/^([1-5])\s+(?=[a-zà-ÿœ])(.+)$/i))) { units = Number(u[1]); name = u[2] }         // 4 Edam (au-delà de 5 : taille du paquet, ex. 12 œufs)
+  name = clean(name.replace(/[,\s\-–]+$/, ''))
+  return { name: capitalize(name), promo, note, ppk, units, grams }
+}
+
+/**
+ * Lit la formule du montant : elle contient souvent la quantité.
+ *  =2*3.25        → 2 unités à 3,25 €
+ *  =(2*1.95)-1.17 → 2 unités à 1,95 €, remise 1,17 €
+ *  =7.24-1.45     → 1 unité à 7,24 €, remise 1,45 € (promo)
+ *  =1.49+1.49     → 2 unités à 1,49 €
+ *  =1.49+1.49+0.8 → plusieurs articles différents (prix moyen)
+ */
+function parseFormula(f) {
+  if (!f) return null
+  const s = f.replace(/\s/g, '')
+  const N = '(\\d+(?:\\.\\d+)?)'
+  let m
+  const mult = (a, b) => {
+    const [x, y] = [Number(a), Number(b)]
+    // le nombre d'unités est l'entier ; à défaut, le plus petit des deux
+    if (Number.isInteger(x) && (!Number.isInteger(y) || x <= y)) return { units: x, price: y }
+    return { units: y, price: x }
+  }
+  if ((m = s.match(new RegExp(`^${N}\\*${N}$`)))) return { ...mult(m[1], m[2]), discount: 0 }
+  if ((m = s.match(new RegExp(`^\\(?${N}\\*${N}\\)?-${N}$`)))) return { ...mult(m[1], m[2]), discount: Number(m[3]) }
+  if ((m = s.match(new RegExp(`^${N}-${N}$`)))) return { units: 1, price: Number(m[1]), discount: Number(m[2]) }
+  if ((m = s.match(new RegExp(`^${N}(\\+${N})+$`)))) {
+    const terms = s.split('+').map(Number)
+    const same = terms.every((t) => t === terms[0])
+    return { units: terms.length, price: same ? terms[0] : terms.reduce((a, b) => a + b, 0) / terms.length, discount: 0, mixed: !same }
+  }
+  return null
+}
+
+function formulaOf(cell) {
+  const v = cell?.value
+  return v && typeof v === 'object' && typeof v.formula === 'string' ? v.formula : null
 }
 
 // --- Lecture du classeur ---------------------------------------------------
@@ -193,13 +256,31 @@ for (const ws of wb.worksheets) {
           continue
         }
         const it = parseItemName(nameRaw, Boolean(cat.weighed))
+        const amountCol = cols.amount && number(get(rr, cols.amount)) != null ? cols.amount : cols.total
+        const amountCell = amountCol ? ws.getRow(rr).getCell(amountCol) : null
+        const fx = parseFormula(formulaOf(amountCell))
+        const paid = Math.round(amount * 100) / 100
+        const units = fx?.units ?? it.units ?? null
+        let promo = (cols.promo ? number(get(rr, cols.promo)) : null) ?? it.promo
+        // Remise visible dans la formule (=7.24-1.45) : convertie en % de promo
+        if (promo == null && fx?.discount > 0) promo = Math.round((fx.discount / (fx.units * fx.price)) * 1000) / 10
+        // « 2 Mozza 1+1 » : 2 reçues, 1 payée → promo de 50 % (le prix comparé reste le prix normal).
+        // Si la formule donne déjà « nombre payé × prix » (=1.02*2), le prix unitaire est déjà le bon.
+        const nm = it.note?.match(/^promo (\d)\+(\d)$/)
+        if (promo == null && nm && !fx && it.units) promo = Math.round((Number(nm[2]) / (Number(nm[1]) + Number(nm[2]))) * 1000) / 10
+        let qty = cols.qty ? number(get(rr, cols.qty)) : null
+        let ppk = (cols.ppk ? number(get(rr, cols.ppk)) : null) ?? it.ppk
+        // Poids dans le nom (« pâtes 500gr ») : on en déduit un prix au kilo, hors promo
+        if (it.grams && qty == null && ppk == null) {
+          qty = it.grams * (units ?? 1)
+          ppk = Math.round(((paid / (1 - (promo ?? 0) / 100)) / (qty / 1000)) * 100) / 100
+        }
+        const notes = [it.note, fx?.mixed ? 'plusieurs articles (prix moyen)' : null].filter(Boolean)
         purchases.push({
           period, category: cat.name, item: it.name, store: sd.store, date,
-          qty: cols.qty ? number(get(rr, cols.qty)) : null,
-          ppk: (cols.ppk ? number(get(rr, cols.ppk)) : null) ?? it.ppk,
-          promo: (cols.promo ? number(get(rr, cols.promo)) : null) ?? it.promo,
-          amount: Math.round(amount * 100) / 100,
-          note: it.note,
+          qty, ppk, promo, units: units && units !== 1 ? units : null,
+          amount: paid,
+          note: notes.length ? notes.join(' · ') : null,
         })
         sum += amount
       }
@@ -269,11 +350,11 @@ ${[...new Set([...canonical].map(([k, n]) => `${k.split('|')[0]}\u0000${n}`))].m
   join categories c on c.user_id = uid and c.name = v.category
   on conflict (category_id, name) do nothing;
 
-  insert into purchases (user_id, period, item_id, store_id, purchased_on, quantity_g, price_per_kg, promo_pct, amount, note)
-  select uid, v.period::date, i.id, s.id, v.purchased_on::date, v.qty, v.ppk, v.promo, v.amount, v.note
+  insert into purchases (user_id, period, item_id, store_id, purchased_on, quantity_g, price_per_kg, promo_pct, units, amount, note)
+  select uid, v.period::date, i.id, s.id, v.purchased_on::date, v.qty, v.ppk, v.promo, v.units, v.amount, v.note
   from (values
-${purchases.map((p) => `    (${q(p.period)}, ${q(p.category)}, ${q(p.item)}, ${q(p.store)}, ${q(p.date)}, ${q(p.qty)}::numeric, ${q(p.ppk)}::numeric, ${q(p.promo)}::numeric, ${p.amount}, ${q(p.note)})`).join(',\n')}
-  ) as v(period, category, item, store, purchased_on, qty, ppk, promo, amount, note)
+${purchases.map((p) => `    (${q(p.period)}, ${q(p.category)}, ${q(p.item)}, ${q(p.store)}, ${q(p.date)}, ${q(p.qty)}::numeric, ${q(p.ppk)}::numeric, ${q(p.promo)}::numeric, ${q(p.units)}::numeric, ${p.amount}, ${q(p.note)})`).join(',\n')}
+  ) as v(period, category, item, store, purchased_on, qty, ppk, promo, units, amount, note)
   join categories c on c.user_id = uid and c.name = v.category
   join items i on i.category_id = c.id and i.name = v.item
   left join stores s on s.user_id = uid and s.name = v.store;
