@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FormModal } from '../components/Modal'
 import { deleteRow, must, saveRow, saveSettings, updateRow } from '../lib/api'
 import { useApp } from '../lib/app'
@@ -9,6 +9,50 @@ import type { FormSpec } from './Global'
 import { ProductIcon } from '../components/ProductIcon'
 import { productIcon } from '../lib/icons'
 import { readTextSize, saveTextSize, TEXT_SIZES, type TextSize } from '../lib/textsize'
+import { bestVoice, frenchVoices, onVoicesChanged, readVoiceSettings, saveVoiceSettings, speak, speechSupported, stopSpeaking } from '../lib/voice'
+
+const RATES = [{ value: 0.85, label: 'Lente' }, { value: 1, label: 'Normale' }, { value: 1.15, label: 'Rapide' }]
+const SAMPLE = "Bonjour ! Ce mois-ci, vous avez dépensé 128,29 € en courses. C'est un peu moins que le mois dernier."
+
+/** Choix de la voix qui lit les réponses de l'assistant (propre à chaque appareil). */
+function VoiceSettings() {
+  const [voices, setVoices] = useState(frenchVoices)
+  const [settings, setSettings] = useState(readVoiceSettings)
+  useEffect(() => onVoicesChanged(() => setVoices(frenchVoices())), [])
+  useEffect(() => () => stopSpeaking(), [])
+  if (!speechSupported()) return null
+  const current = settings.voiceURI ?? bestVoice()?.voiceURI ?? ''
+  const update = (v: { voiceURI?: string | null; rate?: number }) => {
+    saveVoiceSettings(v)
+    const next = { ...settings, ...v }
+    setSettings(next)
+    speak(SAMPLE, undefined, { voiceURI: next.voiceURI ?? current, rate: next.rate })
+  }
+  return (
+    <section className="card stack" style={{ gap: 10 }}>
+      <h2>Voix de l'assistant</h2>
+      {voices.length === 0
+        ? <p className="muted small" style={{ margin: 0 }}>Aucune voix française trouvée sur cet appareil. Sur Android, installez « Synthèse vocale Google » ; sur iPhone, Réglages → Accessibilité → Contenu énoncé → Voix → Français.</p>
+        : (
+          <label className="field">
+            Voix
+            <select value={current} onChange={(e) => update({ voiceURI: e.target.value })}>
+              {voices.map((v) => <option key={v.voiceURI} value={v.voiceURI}>{v.name.replace(/^(Microsoft|Google)s+/, '')}{v.localService ? '' : ' (en ligne)'}</option>)}
+            </select>
+          </label>
+        )}
+      <div className="chips" role="radiogroup" aria-label="Vitesse de lecture">
+        {RATES.map((r) => (
+          <button key={r.value} role="radio" aria-checked={settings.rate === r.value} className={`chip ${settings.rate === r.value ? 'selected' : ''}`} onClick={() => update({ rate: r.value })}>
+            {settings.rate === r.value && '✓ '}{r.label}
+          </button>
+        ))}
+      </div>
+      <button className="btn" onClick={() => speak(SAMPLE, undefined, { voiceURI: current, rate: settings.rate })}>▶ Écouter un exemple</button>
+      <p className="muted small" style={{ margin: 0 }}>Choisissez la voix la plus agréable : chaque choix lit un exemple. Les voix « en ligne », « Google » ou « Natural » sont souvent les plus naturelles. Réglage propre à cet appareil.</p>
+    </section>
+  )
+}
 
 /** Catégories reprises du fichier Excel (modèle d'octobre). */
 export const DEFAULT_CATEGORIES: Partial<Category>[] = [
@@ -121,6 +165,8 @@ export default function Parametres() {
         </div>
         <p className="muted small" style={{ marginBottom: 0 }}>Réglage propre à cet appareil (GSM, tablette…).</p>
       </section>
+
+      <VoiceSettings />
 
       <section className="card">
         <div className="spread"><h2>Objectifs</h2><button className="btn-ghost" onClick={editSettings}>Modifier</button></div>

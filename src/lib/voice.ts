@@ -90,6 +90,7 @@ export function speakable(text: string): string {
     .replace(/^#{1,4}\s+/gm, '')
     .replace(/^\s*(?:[-*•]|\d+[.)])\s+/gm, '')
     .replace(/\p{Extended_Pictographic}️?/gu, '')
+    .replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, (_m, y: string, mo: string, d: string) => `${Number(d)} ${MONTHS_FR[Number(mo) - 1] ?? mo} ${y}`)
     .replace(/€\/kg/g, ' euros le kilo')
     .replace(/(\d),(\d{2}) €/g, '$1 euros $2')
     .replace(/ €/g, ' euros')
@@ -99,28 +100,107 @@ export function speakable(text: string): string {
     .trim()
 }
 
+const MONTHS_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+
 export const speechSupported = () => typeof window !== 'undefined' && 'speechSynthesis' in window
 
-function frenchVoice(): SpeechSynthesisVoice | null {
-  const voices = window.speechSynthesis.getVoices()
-  return voices.find((v) => v.lang === 'fr-BE') ?? voices.find((v) => v.lang === 'fr-FR') ?? voices.find((v) => v.lang.startsWith('fr')) ?? null
+// ---------------------------------------------------------------------------
+// Choix de la voix : la meilleure voix française de l'appareil, ou celle choisie
+// dans Paramètres → Voix de l'assistant (mémorisée sur cet appareil).
+// ---------------------------------------------------------------------------
+const VOICE_KEY = 'comptes.voice'
+const RATE_KEY = 'comptes.voiceRate'
+
+/** Voix françaises de l'appareil (la liste arrive parfois un peu après le chargement). */
+export function frenchVoices(): SpeechSynthesisVoice[] {
+  if (!speechSupported()) return []
+  return window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().replace('_', '-').startsWith('fr'))
 }
 
+/** Prévient quand la liste des voix change (chargement asynchrone sur Chrome/Android). */
+export function onVoicesChanged(cb: () => void): () => void {
+  if (!speechSupported()) return () => {}
+  window.speechSynthesis.addEventListener('voiceschanged', cb)
+  return () => window.speechSynthesis.removeEventListener('voiceschanged', cb)
+}
+
+/** Note d'une voix : les voix « naturelles » ou en ligne sonnent bien mieux que les voix compactes. */
+function score(v: SpeechSynthesisVoice): number {
+  const n = v.name.toLowerCase()
+  let s = 0
+  if (/natural|neural|premium|enhanced|améliorée|amelioree|wavenet|online/.test(n)) s += 50
+  if (/google/.test(n)) s += 30
+  if (/amélie|amelie|audrey|aurélie|thomas|marie|denise|henri|eloise|vivienne/.test(n)) s += 15
+  if (/compact|espeak|robot|novelty/.test(n)) s -= 60
+  if (!v.localService) s += 5
+  const lang = v.lang.toLowerCase().replace('_', '-')
+  if (lang === 'fr-be') s += 8
+  else if (lang === 'fr-fr') s += 6
+  else if (lang === 'fr-ca' || lang === 'fr-ch') s += 2
+  return s
+}
+
+export function readVoiceSettings(): { voiceURI: string | null; rate: number } {
+  try {
+    const rate = Number(localStorage.getItem(RATE_KEY))
+    return { voiceURI: localStorage.getItem(VOICE_KEY), rate: rate >= 0.6 && rate <= 1.5 ? rate : 1 }
+  } catch { return { voiceURI: null, rate: 1 } }
+}
+
+export function saveVoiceSettings(v: { voiceURI?: string | null; rate?: number }) {
+  try {
+    if (v.voiceURI !== undefined) { if (v.voiceURI) localStorage.setItem(VOICE_KEY, v.voiceURI); else localStorage.removeItem(VOICE_KEY) }
+    if (v.rate !== undefined) localStorage.setItem(RATE_KEY, String(v.rate))
+  } catch { /* réglage non mémorisé */ }
+}
+
+/** Voix utilisée : celle choisie si elle existe encore, sinon la mieux notée. */
+export function bestVoice(): SpeechSynthesisVoice | null {
+  const voices = frenchVoices()
+  const chosen = readVoiceSettings().voiceURI
+  return voices.find((v) => v.voiceURI === chosen) ?? [...voices].sort((a, b) => score(b) - score(a))[0] ?? null
+}
+
+/** Découpe en phrases courtes : les longs textes sont coupés ou accélérés par certains navigateurs. */
+function sentences(text: string): string[] {
+  const parts = text.match(/[^.!?…;:]+[.!?…;:]*\s*/g) ?? [text]
+  const out: string[] = []
+  for (const p of parts.map((x) => x.trim()).filter(Boolean)) {
+    if (out.length && (out[out.length - 1].length + p.length) < 160) out[out.length - 1] += ' ' + p
+    else out.push(p)
+  }
+  return out
+}
+
+let speechRun = 0
+
 /** Lit un texte à voix haute ; onEnd est appelé à la fin (ou à l'arrêt). */
-export function speak(text: string, onEnd?: () => void) {
+export function speak(text: string, onEnd?: () => void, override?: { voiceURI?: string | null; rate?: number }) {
   if (!speechSupported()) { onEnd?.(); return }
   const synth = window.speechSynthesis
   synth.cancel()
-  const u = new SpeechSynthesisUtterance(speakable(text))
-  u.lang = 'fr-BE'
-  const v = frenchVoice()
-  if (v) u.voice = v
-  u.rate = 0.95
-  u.onend = () => onEnd?.()
-  u.onerror = () => onEnd?.()
-  synth.speak(u)
+  const run = ++speechRun
+  const settings = readVoiceSettings()
+  const voice = override?.voiceURI ? frenchVoices().find((v) => v.voiceURI === override.voiceURI) ?? bestVoice() : bestVoice()
+  const rate = override?.rate ?? settings.rate
+  const chunks = sentences(speakable(text))
+  let i = 0
+  const next = () => {
+    if (run !== speechRun) return // une autre lecture a commencé, ou arrêt
+    if (i >= chunks.length) { onEnd?.(); return }
+    const u = new SpeechSynthesisUtterance(chunks[i++])
+    u.lang = voice?.lang ?? 'fr-FR'
+    if (voice) u.voice = voice
+    u.rate = rate
+    u.pitch = 1
+    u.onend = next
+    u.onerror = () => { if (run === speechRun) onEnd?.() }
+    synth.speak(u)
+  }
+  next()
 }
 
 export function stopSpeaking() {
+  speechRun++
   if (speechSupported()) window.speechSynthesis.cancel()
 }
