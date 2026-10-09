@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useApp } from '../lib/app'
 import { MONTHS } from '../lib/format'
 import { addMonths, makePeriod, parsePeriod } from '../lib/period'
@@ -40,6 +40,7 @@ const NAV = [
 
 export function Layout() {
   const { error } = useApp()
+  const { pathname } = useLocation()
   return (
     <div className="app">
       <header className="topbar">
@@ -63,7 +64,7 @@ export function Layout() {
       </main>
       <nav className="bottomnav">
         {NAV.map((n) => (
-          <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
+          <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => (isActive || (n.to === '/courses' && pathname === '/prix') ? 'active' : '')}>
             {icon(n.d)}
             {n.label}
           </NavLink>

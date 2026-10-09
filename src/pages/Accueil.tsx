@@ -94,6 +94,7 @@ export default function Accueil() {
         <Link to="/saisie" className="btn btn-primary btn-big">+ Encoder une dépense</Link>
         <Link to="/courses" className="btn btn-big">🛒 Liste de courses</Link>
       </div>
+      <Link to="/prix" className="btn btn-block">🏷️ Où sont mes produits les moins chers ?</Link>
 
       <h1 className="capitalize">{periodLabel(period)}</h1>
 

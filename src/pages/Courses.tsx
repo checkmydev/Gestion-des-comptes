@@ -8,6 +8,7 @@ import { eur, todayIso } from '../lib/format'
 import { currentPeriod, periodLabel } from '../lib/period'
 import { planShopping, type Suggestion } from '../lib/shopping'
 import type { PriceReference, Purchase } from '../lib/types'
+import { CoursesTabs } from './MeilleursPrix'
 
 type Horizon = 7 | 'mois'
 type Grouping = 'categorie' | 'magasin'
@@ -100,6 +101,7 @@ export default function Courses() {
 
   return (
     <div className="stack">
+      <CoursesTabs />
       <h1>Liste de courses</h1>
       <p className="muted small">
         Proposée d'après les achats des 6 derniers mois : articles réguliers dont le délai habituel est atteint,

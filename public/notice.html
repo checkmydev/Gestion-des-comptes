@@ -192,7 +192,7 @@
       <ol>
         <li><a href="#installer"><span class="num">1</span><span>Installer et se connecter<span class="time">La première fois</span></span></a></li>
         <li><a href="#accueil"><span class="num">2</span><span>Le coup d'œil du matin<span class="time">Au petit-déjeuner</span></span></a></li>
-        <li><a href="#courses"><span class="num">3</span><span>Préparer la liste de courses<span class="time">Avant de partir</span></span></a></li>
+        <li><a href="#courses"><span class="num">3</span><span>Préparer les courses au meilleur prix<span class="time">Avant de partir</span></span></a></li>
         <li><a href="#saisie"><span class="num">4</span><span>Encoder ses achats<span class="time">Au magasin</span></span></a></li>
         <li><a href="#detail"><span class="num">5</span><span>Vérifier et corriger<span class="time">De retour à la maison</span></span></a></li>
         <li><a href="#global"><span class="num">6</span><span>Le Global : essence, factures, épargne<span class="time">Quand une facture tombe</span></span></a></li>
@@ -248,6 +248,7 @@
             <li>trait <strong style="color:#2a78d6">bleu</strong> : une facture annuelle arrive bientôt, il faut la prévoir.</li>
           </ul>
           <p>Plus bas, une barre par catégorie montre ce qui est dépensé par rapport au budget.</p>
+          <p>Les trois boutons du haut mènent directement à la <strong>saisie</strong>, à la <strong>liste de courses</strong> et aux <strong>meilleurs prix</strong> (étape 3).</p>
         </div>
         <figure class="phone"><img src="./notice/02-accueil.webp" alt="Accueil : dépenses courantes, solde de fin de mois, épargne, dépenses annuelles" loading="lazy" width="390" height="780" /><figcaption>Le résumé du mois</figcaption></figure>
         <figure class="phone"><img src="./notice/03-accueil-alertes.webp" alt="Alertes et barres de budget par catégorie" loading="lazy" width="390" height="780" /><figcaption>Les alertes et les barres par catégorie</figcaption></figure>
@@ -256,8 +257,8 @@
 
     <!-- 3 ------------------------------------------------------------------ -->
     <section class="chapter" id="courses">
-      <div class="chapter-head"><span class="num">3</span><h2 class="chapter-title">Préparer la liste de courses</h2></div>
-      <p class="moment">Avant de partir : qu'est-ce qu'il faut racheter ?</p>
+      <div class="chapter-head"><span class="num">3</span><h2 class="chapter-title">Préparer les courses au meilleur prix</h2></div>
+      <p class="moment">Avant de partir : qu'est-ce qu'il faut racheter, et où est-ce le moins cher ?</p>
 
       <div class="step">
         <div>
@@ -272,6 +273,23 @@
           <p class="tip"><strong>Astuce</strong>Plus vous encodez d'achats, plus la liste devient juste. Il faut au moins deux achats d'un même article pour que l'application connaisse son rythme.</p>
         </div>
         <figure class="phone"><img src="./notice/16-courses.webp" alt="Liste de courses proposée, avec le budget disponible" loading="lazy" width="390" height="780" /></figure>
+      </div>
+
+      <div class="step duo">
+        <div>
+          <h3>Où mes produits sont-ils les moins chers ?</h3>
+          <p>En haut de la page Courses, touchez <span class="ui">Meilleurs prix</span>. Vous y arrivez aussi par le bouton <span class="ui">🏷️ Où sont mes produits les moins chers ?</span> de l'accueil.</p>
+          <p>Les prix des magasins y sont <strong>relevés régulièrement</strong>. La date de la dernière mise à jour est indiquée en haut de la page.</p>
+          <ul>
+            <li><strong>Les magasins les moins chers</strong> : pour combien de vos produits chaque magasin propose le meilleur prix. C'est utile pour choisir où faire ses courses de la semaine.</li>
+            <li>Une <strong>carte par produit</strong> : à gauche, le prix <strong>le moins cher</strong> et le magasin ; à droite, ce que <strong>vous payez</strong> d'habitude.</li>
+            <li>Le pourcentage <strong style="color:#006300">en vert</strong> indique l'économie possible. <span class="ui">✓ déjà au meilleur prix</span> : rien à changer pour ce produit.</li>
+            <li>Touchez <span class="ui">▸ magasins comparés</span> pour voir le prix dans chaque magasin.</li>
+          </ul>
+          <p class="note"><strong>Les prix sont mis à jour sur demande</strong>Ils ne changent pas tout seuls : ce sont les prix du jour de la dernière recherche, indiqué en haut. Une promotion peut être terminée entre-temps.</p>
+        </div>
+        <figure class="phone"><img src="./notice/16b-prix.webp" alt="Meilleurs prix : produits comparés et classement des magasins les moins chers" loading="lazy" width="390" height="780" /><figcaption>Les magasins les moins chers</figcaption></figure>
+        <figure class="phone"><img src="./notice/16c-prix-detail.webp" alt="Cartes produit : meilleur prix, prix payé et comparaison par magasin" loading="lazy" width="390" height="780" /><figcaption>Le détail par produit</figcaption></figure>
       </div>
     </section>
 
@@ -463,6 +481,11 @@
       <details>
         <summary>Où régler les catégories, les magasins et les objectifs ?</summary>
         <p>Avec la roue dentée ⚙ en haut à gauche : budget de chaque catégorie, ordre d'affichage, magasins, plafond des dépenses annuelles et réserve « imprévus » visée.</p>
+        <figure class="phone" style="margin-top: 12px"><img src="./notice/21-parametres.webp" alt="Écran des paramètres : objectifs et catégories" loading="lazy" width="390" height="780" /></figure>
+      </details>
+      <details>
+        <summary>Les « meilleurs prix » sont-ils à jour ?</summary>
+        <p>Ils datent de la dernière recherche de prix, dont la date est indiquée en haut de la page <span class="ui">Meilleurs prix</span>. Ils sont mis à jour sur demande : s'ils vous semblent anciens, demandez une nouvelle recherche.</p>
       </details>
       <details>
         <summary>Faut-il du réseau ?</summary>

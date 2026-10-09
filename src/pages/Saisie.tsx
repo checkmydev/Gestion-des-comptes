@@ -168,6 +168,7 @@ export default function Saisie() {
           <button className="btn-big" onClick={() => navigate('/inflation')}>Inflation des prix</button>
           <button className="btn-big" onClick={() => navigate('/stats')}>Statistiques et tendances</button>
           <button className="btn-big" onClick={() => navigate('/courses')}>Liste de courses</button>
+          <button className="btn-big" onClick={() => navigate('/prix')}>Meilleurs prix</button>
           <button className="btn-ghost" onClick={() => setStep('category')}>Nouvelle saisie</button>
         </section>
       )}

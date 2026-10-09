@@ -224,8 +224,8 @@ tfoot td { font-weight: 700; border-bottom: 0; }
 .error { color: var(--critical); }
 
 .tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
-.tabs button { border-radius: 999px; min-height: 38px; padding: 6px 14px; white-space: nowrap; }
-.tabs button.active { background: var(--ink); color: var(--surface); border-color: transparent; }
+.tabs button, .tabs .btn { border-radius: 999px; min-height: 38px; padding: 6px 14px; white-space: nowrap; }
+.tabs button.active, .tabs .btn.active { background: var(--ink); color: var(--surface); border-color: transparent; }
 
 /* ---- Modale ------------------------------------------------------------ */
 .modal-backdrop {

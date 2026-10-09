@@ -12,6 +12,7 @@ import Courses from './pages/Courses'
 import Detail from './pages/Detail'
 import Global from './pages/Global'
 import Inflation from './pages/Inflation'
+import MeilleursPrix from './pages/MeilleursPrix'
 import Parametres from './pages/Parametres'
 import Saisie from './pages/Saisie'
 import Stats from './pages/Stats'
@@ -82,6 +83,7 @@ export default function App() {
             <Route index element={<Accueil />} />
             <Route path="saisie" element={<Saisie />} />
             <Route path="courses" element={<Courses />} />
+            <Route path="prix" element={<MeilleursPrix />} />
             <Route path="detail" element={<Detail />} />
             <Route path="global" element={<Global />} />
             <Route path="stats" element={<Stats />} />
