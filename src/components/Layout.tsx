@@ -62,6 +62,14 @@ export function Layout() {
         {error && <p className="alert over">Erreur de connexion à la base : {error}</p>}
         <Outlet />
       </main>
+      {pathname !== '/assistant' && !pathname.startsWith('/doc/') && (
+        <NavLink to="/assistant" className="fab" aria-label="Poser une question à l'assistant" title="Assistant">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            <path d="M8 9h8M8 13h5" />
+          </svg>
+        </NavLink>
+      )}
       <nav className="bottomnav">
         {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => (isActive || (n.to === '/courses' && pathname === '/prix') ? 'active' : '')}>

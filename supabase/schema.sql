@@ -193,6 +193,22 @@ create table documents (
 );
 
 -- ---------------------------------------------------------------------------
+-- Signalements de l'assistant (incohérences de l'application, à corriger)
+-- ---------------------------------------------------------------------------
+create table app_reports (
+  id          bigint generated always as identity primary key,
+  user_id     uuid not null default auth.uid() references auth.users on delete cascade,
+  created_at  timestamptz not null default now(),
+  type        text not null check (type in ('bug', 'donnees', 'incoherence', 'amelioration')),
+  titre       text not null,
+  description text not null,
+  question    text,
+  contexte    jsonb,
+  suggestion  text,
+  statut      text not null default 'nouveau' check (statut in ('nouveau', 'en_cours', 'corrige', 'ignore'))
+);
+
+-- ---------------------------------------------------------------------------
 -- Vue : total par catégorie et par mois (alimente le Global et les stats)
 -- security_invoker => les règles RLS des tables sous-jacentes s'appliquent.
 -- ---------------------------------------------------------------------------
@@ -236,7 +252,7 @@ begin
   foreach t in array array[
     'categories', 'items', 'stores', 'purchases', 'months', 'monthly_lines',
     'annual_provisions', 'annual_payments', 'user_settings', 'savings_movements',
-    'fuel_fills', 'trips', 'price_references', 'documents'
+    'fuel_fills', 'trips', 'price_references', 'documents', 'app_reports'
   ] loop
     execute format('alter table %I enable row level security', t);
     execute format(

@@ -8,6 +8,7 @@ import { AppProvider } from './lib/app'
 import { isConfigured, supabase } from './lib/supabase'
 import Accueil from './pages/Accueil'
 import Article from './pages/Article'
+import Assistant from './pages/Assistant'
 import Courses from './pages/Courses'
 import Detail from './pages/Detail'
 import Document from './pages/Document'
@@ -92,6 +93,7 @@ export default function App() {
             <Route path="article/:id" element={<Article />} />
             <Route path="parametres" element={<Parametres />} />
             <Route path="doc/:slug" element={<Document />} />
+            <Route path="assistant" element={<Assistant />} />
             <Route path="*" element={<Accueil />} />
           </Route>
         </Routes>
