@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1f6f5c" />
+  <meta name="description" content="Notice d'utilisation de l'application Comptes : encoder ses achats, suivre son budget, préparer ses courses." />
+  <link rel="icon" href="./icon-192.png" type="image/png" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+  <title>Notice Comptes</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f9f9f7;
+      --surface: #ffffff;
+      --surface-2: #f0efec;
+      --ink: #0b0b0b;
+      --ink-2: #52514e;
+      --muted: #77756f;
+      --border: rgba(11, 11, 11, 0.1);
+      --accent: #1f6f5c;
+      --accent-ink: #ffffff;
+      --accent-soft: #e2efe9;
+      --gold: #f6bd2f;
+      --info: #2a78d6;
+      --warn: #fab219;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme='light']) {
+        color-scheme: dark;
+        --page: #0d0d0d;
+        --surface: #1a1a19;
+        --surface-2: #262624;
+        --ink: #ffffff;
+        --ink-2: #c3c2b7;
+        --muted: #9a988f;
+        --border: rgba(255, 255, 255, 0.1);
+        --accent: #4fb596;
+        --accent-ink: #0b1f19;
+        --accent-soft: #1c3029;
+      }
+    }
+    :root[data-theme='dark'] {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --surface-2: #262624;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #9a988f;
+      --border: rgba(255, 255, 255, 0.1);
+      --accent: #4fb596;
+      --accent-ink: #0b1f19;
+      --accent-soft: #1c3029;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      font-size: 18px; /* lecture confortable sur GSM */
+      line-height: 1.55;
+      -webkit-text-size-adjust: 100%;
+    }
+    a { color: var(--accent); }
+    img { max-width: 100%; display: block; }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 5;
+      background: var(--accent); color: var(--accent-ink);
+      padding: calc(env(safe-area-inset-top) + 10px) 16px 10px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .topbar strong { font-size: 1.05rem; }
+    .back {
+      color: inherit; text-decoration: none; font-weight: 600; white-space: nowrap;
+      border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 999px; padding: 6px 14px;
+    }
+
+    main { max-width: 980px; margin: 0 auto; padding: 0 16px 64px; }
+
+    .hero { display: flex; gap: 18px; align-items: center; padding: 28px 0 8px; }
+    .hero img { width: 76px; height: 76px; border-radius: 18px; flex-shrink: 0; }
+    h1 { font-size: 1.7rem; line-height: 1.2; margin: 0 0 6px; }
+    .lead { color: var(--ink-2); margin: 0; }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px;
+    }
+    .summary { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin: 20px 0; }
+    .summary .card { display: flex; gap: 12px; align-items: flex-start; }
+    .summary .emoji { font-size: 1.6rem; line-height: 1; }
+    .summary p { margin: 2px 0 0; color: var(--ink-2); font-size: 0.95rem; }
+
+    nav.toc { margin: 28px 0 8px; }
+    nav.toc h2 { font-size: 1.15rem; margin: 0 0 10px; }
+    nav.toc ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    nav.toc a {
+      display: flex; gap: 12px; align-items: center; text-decoration: none; color: var(--ink);
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-height: 52px;
+    }
+    nav.toc .time { color: var(--muted); font-size: 0.85rem; display: block; }
+    .num {
+      flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
+      background: var(--accent); color: var(--accent-ink); font-weight: 700;
+      display: inline-flex; align-items: center; justify-content: center; font-size: 0.95rem;
+    }
+
+    section.chapter { padding-top: 40px; scroll-margin-top: 64px; }
+    .chapter-head { display: flex; gap: 14px; align-items: center; margin-bottom: 6px; }
+    .chapter-head .num { width: 40px; height: 40px; font-size: 1.1rem; }
+    h2.chapter-title { font-size: 1.4rem; margin: 0; line-height: 1.25; }
+    .moment { color: var(--muted); font-size: 0.95rem; margin: 0 0 18px 54px; }
+
+    .step { display: grid; gap: 18px; align-items: start; margin: 18px 0 26px; grid-template-columns: 1fr; }
+    @media (min-width: 760px) {
+      .step { grid-template-columns: minmax(0, 1fr) 300px; gap: 32px; }
+      .step.duo { grid-template-columns: minmax(0, 1fr) 300px 300px; }
+    }
+    .step h3 { font-size: 1.1rem; margin: 0 0 6px; }
+    .step p { margin: 0 0 10px; }
+    .step ol, .step ul { margin: 0 0 10px; padding-left: 22px; }
+    .step li { margin: 4px 0; }
+
+    .phone {
+      background: #111; border-radius: 30px; padding: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+      width: 100%; max-width: 300px; margin: 0 auto;
+    }
+    .phone img { border-radius: 23px; width: 100%; height: auto; aspect-ratio: 390 / 780; background: var(--surface-2); }
+    figure { margin: 0; }
+    figcaption { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
+    .shots { display: grid; gap: 16px; grid-template-columns: 1fr; }
+    @media (min-width: 520px) and (max-width: 759px) { .shots.two { grid-template-columns: 1fr 1fr; } }
+
+    .tip, .note {
+      border-radius: 12px; padding: 12px 14px; margin: 12px 0; font-size: 0.96rem;
+      background: var(--surface-2); border-left: 4px solid var(--accent);
+    }
+    .note { border-left-color: var(--warn); }
+    .tip strong:first-child, .note strong:first-child { display: block; margin-bottom: 2px; }
+
+    .ui {
+      display: inline-block; font-weight: 700; font-size: 0.92em; padding: 1px 8px; border-radius: 7px;
+      background: var(--accent-soft); color: var(--ink); white-space: nowrap;
+    }
+    kbd {
+      font-family: inherit; font-size: 0.9em; background: var(--surface); border: 1px solid var(--border);
+      border-bottom-width: 2px; border-radius: 6px; padding: 0 6px;
+    }
+
+    .faq details {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin: 10px 0;
+    }
+    .faq summary { cursor: pointer; font-weight: 700; min-height: 32px; }
+    .faq details p { margin: 8px 0 2px; color: var(--ink-2); }
+
+    footer { color: var(--muted); font-size: 0.9rem; text-align: center; margin-top: 48px; }
+    .cta {
+      display: block; text-align: center; text-decoration: none; font-weight: 700;
+      background: var(--accent); color: var(--accent-ink); border-radius: 14px; padding: 16px; margin: 28px 0 0;
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <strong>Notice</strong>
+    <a class="back" href="./">← Retour à l'application</a>
+  </header>
+
+  <main>
+    <div class="hero">
+      <img src="./icon-192.png" alt="" width="76" height="76" />
+      <div>
+        <h1>Comptes : le mode d'emploi</h1>
+        <p class="lead">Tout ce qu'il faut savoir pour encoder ses achats au magasin et garder un œil sur son budget, au fil d'une journée type.</p>
+      </div>
+    </div>
+
+    <div class="summary">
+      <div class="card"><span class="emoji" aria-hidden="true">🛒</span><div><strong>Encoder au magasin</strong><p>Chaque achat en quelques touches, directement sur le téléphone. Fini les tickets qui s'entassent.</p></div></div>
+      <div class="card"><span class="emoji" aria-hidden="true">📊</span><div><strong>Suivre le budget</strong><p>L'application additionne tout, prévoit la fin du mois et prévient quand une catégorie dérape.</p></div></div>
+      <div class="card"><span class="emoji" aria-hidden="true">🏷️</span><div><strong>Surveiller les prix</strong><p>Pour chaque produit, l'évolution du prix dans chaque magasin, et où il est le moins cher.</p></div></div>
+    </div>
+
+    <p class="tip"><strong>Les écrans de cette notice</strong>Les montants affichés sont des exemples fictifs, pas vos vrais comptes.</p>
+
+    <nav class="toc" aria-label="Sommaire">
+      <h2>Le scénario, étape par étape</h2>
+      <ol>
+        <li><a href="#installer"><span class="num">1</span><span>Installer et se connecter<span class="time">La première fois</span></span></a></li>
+        <li><a href="#accueil"><span class="num">2</span><span>Le coup d'œil du matin<span class="time">Au petit-déjeuner</span></span></a></li>
+        <li><a href="#courses"><span class="num">3</span><span>Préparer la liste de courses<span class="time">Avant de partir</span></span></a></li>
+        <li><a href="#saisie"><span class="num">4</span><span>Encoder ses achats<span class="time">Au magasin</span></span></a></li>
+        <li><a href="#detail"><span class="num">5</span><span>Vérifier et corriger<span class="time">De retour à la maison</span></span></a></li>
+        <li><a href="#global"><span class="num">6</span><span>Le Global : essence, factures, épargne<span class="time">Quand une facture tombe</span></span></a></li>
+        <li><a href="#analyses"><span class="num">7</span><span>Faire le point et fixer ses budgets<span class="time">Le dimanche</span></span></a></li>
+        <li><a href="#prix"><span class="num">8</span><span>Suivre les prix<span class="time">Par curiosité… ou par prudence</span></span></a></li>
+        <li><a href="#faq"><span class="num">?</span><span>Bon à savoir<span class="time">Les questions fréquentes</span></span></a></li>
+      </ol>
+    </nav>
+
+    <!-- 1 ------------------------------------------------------------------ -->
+    <section class="chapter" id="installer">
+      <div class="chapter-head"><span class="num">1</span><h2 class="chapter-title">Installer et se connecter</h2></div>
+      <p class="moment">La première fois, une seule fois.</p>
+
+      <div class="step">
+        <div>
+          <h3>Mettre l'application sur l'écran d'accueil du téléphone</h3>
+          <p>Ouvrez l'adresse de l'application dans le navigateur du téléphone :</p>
+          <p><a href="./">checkmydev.github.io/Gestion-des-comptes</a></p>
+          <ul>
+            <li><strong>Android</strong> : touchez <span class="ui">Installer l'application</span> dans le cadre qui apparaît en haut.</li>
+            <li><strong>iPhone</strong> : touchez le bouton <strong>Partager</strong> de Safari (le carré avec une flèche ↑), puis <strong>« Sur l'écran d'accueil »</strong> et <strong>Ajouter</strong>.</li>
+          </ul>
+          <p>L'icône <strong>panier vert</strong> apparaît alors parmi vos applications : il suffit de la toucher pour ouvrir Comptes, comme n'importe quelle autre application.</p>
+          <h3>Se connecter</h3>
+          <p>Entrez votre <strong>adresse e-mail</strong> et votre <strong>mot de passe</strong>, puis <span class="ui">Se connecter</span>. Le téléphone s'en souvient : vous ne devrez plus le refaire.</p>
+        </div>
+        <figure class="phone"><img src="./notice/01-connexion.webp" alt="Écran de connexion avec le cadre « Installer l'application »" loading="lazy" width="390" height="780" /></figure>
+      </div>
+    </section>
+
+    <!-- 2 ------------------------------------------------------------------ -->
+    <section class="chapter" id="accueil">
+      <div class="chapter-head"><span class="num">2</span><h2 class="chapter-title">Le coup d'œil du matin</h2></div>
+      <p class="moment">Au petit-déjeuner : où en est le mois ?</p>
+
+      <div class="step duo">
+        <div>
+          <h3>L'écran d'accueil résume tout</h3>
+          <p>En haut, le <strong>mois affiché</strong>. Les flèches <kbd>‹</kbd> <kbd>›</kbd> permettent de passer au mois précédent ou suivant.</p>
+          <p>Quatre cadres donnent l'essentiel :</p>
+          <ul>
+            <li><strong>Dépenses courantes</strong> : ce qui a été dépensé ce mois-ci en nourriture, divers, pharmacie… et ce qui est <em>prévu</em> d'ici la fin du mois.</li>
+            <li><strong>Solde fin de mois</strong> : ce qu'il devrait rester sur le compte à la fin du mois.</li>
+            <li><strong>Épargne</strong> : le compte épargne, comparé à la réserve « imprévus » que vous vous êtes fixée.</li>
+            <li><strong>Dépenses annuelles</strong> : les grosses factures de l'année (assurances, taxes…) comparées au plafond prévu.</li>
+          </ul>
+          <h3>Les alertes</h3>
+          <p>Juste en dessous, l'application signale ce qui mérite attention :</p>
+          <ul>
+            <li>trait <strong style="color:#d03b3b">rouge</strong> : un budget est dépassé, ou va l'être ;</li>
+            <li>trait <strong style="color:#d18a00">jaune</strong> : à surveiller ;</li>
+            <li>trait <strong style="color:#2a78d6">bleu</strong> : une facture annuelle arrive bientôt, il faut la prévoir.</li>
+          </ul>
+          <p>Plus bas, une barre par catégorie montre ce qui est dépensé par rapport au budget.</p>
+        </div>
+        <figure class="phone"><img src="./notice/02-accueil.webp" alt="Accueil : dépenses courantes, solde de fin de mois, épargne, dépenses annuelles" loading="lazy" width="390" height="780" /><figcaption>Le résumé du mois</figcaption></figure>
+        <figure class="phone"><img src="./notice/03-accueil-alertes.webp" alt="Alertes et barres de budget par catégorie" loading="lazy" width="390" height="780" /><figcaption>Les alertes et les barres par catégorie</figcaption></figure>
+      </div>
+    </section>
+
+    <!-- 3 ------------------------------------------------------------------ -->
+    <section class="chapter" id="courses">
+      <div class="chapter-head"><span class="num">3</span><h2 class="chapter-title">Préparer la liste de courses</h2></div>
+      <p class="moment">Avant de partir : qu'est-ce qu'il faut racheter ?</p>
+
+      <div class="step">
+        <div>
+          <h3>L'application propose une liste</h3>
+          <p>Touchez <span class="ui">Courses</span> en bas de l'écran. L'application regarde ce que vous achetez d'habitude et à quel rythme. Elle propose les articles qu'il est temps de racheter, <strong>sans dépasser le budget qu'il reste</strong>.</p>
+          <ul>
+            <li>Choisissez <span class="ui">Cette semaine</span> ou <span class="ui">Jusqu'à la fin du mois</span>.</li>
+            <li><span class="ui">Par magasin</span> regroupe les articles selon le magasin où ils sont <strong>les moins chers</strong>.</li>
+            <li>Au magasin, <strong>cochez</strong> les articles au fur et à mesure.</li>
+          </ul>
+          <p>Ce qui ne rentre pas dans le budget est rangé à part, sous <strong>« Si le budget le permet »</strong>.</p>
+          <p class="tip"><strong>Astuce</strong>Plus vous encodez d'achats, plus la liste devient juste. Il faut au moins deux achats d'un même article pour que l'application connaisse son rythme.</p>
+        </div>
+        <figure class="phone"><img src="./notice/16-courses.webp" alt="Liste de courses proposée, avec le budget disponible" loading="lazy" width="390" height="780" /></figure>
+      </div>
+    </section>
+
+    <!-- 4 ------------------------------------------------------------------ -->
+    <section class="chapter" id="saisie">
+      <div class="chapter-head"><span class="num">4</span><h2 class="chapter-title">Encoder ses achats</h2></div>
+      <p class="moment">Au magasin, ticket de caisse en main. Exemple : des bananes achetées au Lidl.</p>
+
+      <div class="step">
+        <div>
+          <h3>① Choisir la catégorie</h3>
+          <p>Touchez <span class="ui">+ Saisie</span> en bas de l'écran (ou <span class="ui">+ Encoder une dépense</span> sur l'accueil).</p>
+          <p>Vérifiez le <strong>mois comptable</strong> en haut : c'est le mois dans lequel la dépense sera comptée. Puis touchez la catégorie, ici <strong>Légumes</strong>.</p>
+        </div>
+        <figure class="phone"><img src="./notice/04-saisie-categorie.webp" alt="Choix de la catégorie" loading="lazy" width="390" height="780" /></figure>
+      </div>
+
+      <div class="step">
+        <div>
+          <h3>② Choisir l'article</h3>
+          <p>Tapez les premières lettres, par exemple <strong>« ban »</strong> : la liste se réduit. Touchez <strong>Bananes</strong>.</p>
+          <p><strong>Article nouveau ?</strong> Tapez son nom en entier et touchez <span class="ui">+ Ajouter « … » dans Légumes</span>. Il sera proposé la prochaine fois.</p>
+        </div>
+        <figure class="phone"><img src="./notice/05-saisie-article.webp" alt="Recherche d'un article" loading="lazy" width="390" height="780" /></figure>
+      </div>
+
+      <div class="step">
+        <div>
+          <h3>③ Remplir les informations</h3>
+          <p>Le cadre bleu rappelle le <strong>dernier prix payé</strong> pour cet article : pratique pour comparer.</p>
+          <ol>
+            <li><strong>Magasin</strong> : choisissez-le dans la liste (ou <em>+ Nouveau magasin…</em>).</li>
+            <li><strong>Date</strong> : celle du jour est déjà remplie.</li>
+            <li>Pour les <strong>légumes et fruits</strong> : la <strong>quantité en grammes</strong> et le <strong>prix au kilo</strong>. L'application calcule le montant toute seule. Si l'article est en promotion, indiquez le <strong>% de promo</strong>.</li>
+            <li><strong>Montant payé</strong> : pour les autres articles, tapez simplement le prix.</li>
+          </ol>
+          <p>Touchez <span class="ui">Enregistrer</span>.</p>
+          <p class="tip"><strong>Astuce : les petits calculs</strong>Pour deux paquets à 2,15 €, tapez <kbd>2*2,15</kbd> dans le montant : l'application calcule 4,30 €. La virgule et le point fonctionnent tous les deux.</p>
+        </div>
+        <figure class="phone"><img src="./notice/06-saisie-infos.webp" alt="Formulaire : magasin, date, quantité, prix au kilo, montant calculé" loading="lazy" width="390" height="780" /></figure>
+      </div>
+
+      <div class="step duo">
+        <div>
+          <h3>④ Un autre article ?</h3>
+          <ul>
+            <li><span class="ui">Oui, dans Légumes</span> : on enchaîne avec un autre légume.</li>
+            <li><span class="ui">Oui, autre catégorie</span> : on revient au choix de la catégorie.</li>
+            <li><span class="ui">Non</span> : c'est fini pour ce ticket.</li>
+          </ul>
+          <p class="tip"><strong>Gain de temps</strong>Le <strong>magasin</strong> et la <strong>date</strong> restent remplis d'un article à l'autre : un ticket de caisse se tape d'une traite.</p>
+          <h3>⑤ Que voulez-vous consulter ?</h3>
+          <p>Après <span class="ui">Non</span>, l'application propose d'ouvrir le détail du mois, le Global, l'inflation, les statistiques ou la liste de courses. Vous pouvez aussi simplement fermer l'application : tout est déjà enregistré.</p>
+        </div>
+        <figure class="phone"><img src="./notice/07-saisie-encore.webp" alt="Confirmation et question « Voulez-vous enregistrer un autre article ? »" loading="lazy" width="390" height="780" /><figcaption>Enregistré !</figcaption></figure>
+        <figure class="phone"><img src="./notice/08-saisie-consulter.webp" alt="Choix de ce qu'on veut consulter" loading="lazy" width="390" height="780" /><figcaption>Et maintenant ?</figcaption></figure>
+      </div>
+    </section>
+
+    <!-- 5 ------------------------------------------------------------------ -->
+    <section class="chapter" id="detail">
+      <div class="chapter-head"><span class="num">5</span><h2 class="chapter-title">Vérifier et corriger</h2></div>
+      <p class="moment">De retour à la maison : une faute de frappe ? Un achat oublié ?</p>
+
+      <div class="step duo">
+        <div>
+          <h3>Le détail du mois</h3>
+          <p>Touchez <span class="ui">Détail</span> en bas. Chaque catégorie a son tableau, avec son total et son budget. Comme dans l'Excel, la colonne <strong>« Magasin + date »</strong> indique par exemple « Lidl 9/10 ».</p>
+          <h3>Modifier ou supprimer une ligne</h3>
+          <p><strong>Touchez la ligne</strong> : elle s'ouvre. Corrigez puis <span class="ui">Enregistrer les modifications</span>, ou <span class="ui">Supprimer</span>.</p>
+          <h3>Ajouter une ligne oubliée</h3>
+          <p>Sous chaque tableau, <span class="ui">+ Ajouter une ligne</span> ouvre la saisie directement dans la bonne catégorie.</p>
+        </div>
+        <figure class="phone"><img src="./notice/09-detail.webp" alt="Tableau des légumes du mois" loading="lazy" width="390" height="780" /><figcaption>Le tableau d'une catégorie</figcaption></figure>
+        <figure class="phone"><img src="./notice/10-detail-modifier.webp" alt="Modification d'un achat" loading="lazy" width="390" height="780" /><figcaption>Touchez une ligne pour la corriger</figcaption></figure>
+      </div>
+    </section>
+
+    <!-- 6 ------------------------------------------------------------------ -->
+    <section class="chapter" id="global">
+      <div class="chapter-head"><span class="num">6</span><h2 class="chapter-title">Le Global : essence, factures, épargne</h2></div>
+      <p class="moment">Quand la pension arrive, quand on fait le plein, quand une facture tombe.</p>
+
+      <div class="step duo">
+        <div>
+          <h3>Onglet « Mois »</h3>
+          <p>Touchez <span class="ui">Global</span> en bas. C'est le tableau « Global » de l'Excel :</p>
+          <ul>
+            <li><strong>Rentrées</strong> : pension, remboursements… plus le <strong>solde de fin du mois précédent</strong>, repris automatiquement.</li>
+            <li><strong>Dépenses fixes</strong> : loyer, électricité, GSM… Elles sont <strong>recopiées automatiquement chaque mois</strong> : il suffit de toucher une ligne pour changer un montant.</li>
+            <li><strong>Dépenses courantes</strong> : le total de chaque catégorie du détail, comparé au mois précédent.</li>
+            <li>Tout en bas, le <strong>solde de fin de mois</strong>.</li>
+          </ul>
+          <p>Le bouton <span class="ui">+ Ajouter</span> sous chaque bloc permet d'ajouter une ligne à tout moment.</p>
+        </div>
+        <figure class="phone"><img src="./notice/11-global.webp" alt="Global : rentrées et dépenses fixes" loading="lazy" width="390" height="780" /><figcaption>Rentrées et dépenses fixes</figcaption></figure>
+        <figure class="phone"><img src="./notice/12-global-solde.webp" alt="Global : dépenses courantes par catégorie" loading="lazy" width="390" height="780" /><figcaption>Dépenses courantes et solde</figcaption></figure>
+      </div>
+
+      <div class="step">
+        <div>
+          <h3>Onglet « Essence »</h3>
+          <p>À chaque plein : <span class="ui">+ Ajouter un plein</span>, avec la station, le prix au litre, les <strong>kilomètres du compteur</strong> et le total payé.</p>
+          <p>L'application calcule les kilomètres parcourus depuis le plein précédent et la consommation (litres aux 100 km). Le total est repris automatiquement dans le Global.</p>
+          <p>En dessous, les <strong>trajets extra</strong> (où, quand, km aller-retour) sont additionnés.</p>
+        </div>
+        <figure class="phone"><img src="./notice/13-global-essence.webp" alt="Pleins d'essence et trajets extra" loading="lazy" width="390" height="780" /></figure>
+      </div>
+
+      <div class="step duo">
+        <div>
+          <h3>Onglet « Annuels »</h3>
+          <p>Les grosses dépenses de l'année : taxe et assurance voiture, assurance incendie, eau, hospitalisation…</p>
+          <ul>
+            <li>Quand vous payez une facture, touchez <span class="ui">+ payé</span> sur la bonne ligne. Si elle est payée avec l'épargne, laissez la case cochée : l'onglet Épargne est mis à jour en même temps.</li>
+            <li>Indiquez le <strong>mois d'échéance</strong> de chaque poste (touchez son nom) : l'accueil vous préviendra à l'avance.</li>
+          </ul>
+          <h3>Onglet « Épargne »</h3>
+          <p>Le solde du compte épargne et ses mouvements. Avec <span class="ui">+ Ajouter</span>, un montant <strong>positif</strong> est un versement, un montant <strong>négatif</strong> (avec un signe −) est une dépense ou un transfert vers le compte courant.</p>
+        </div>
+        <figure class="phone"><img src="./notice/14-global-annuels.webp" alt="Dépenses annuelles : total, payé, à venir" loading="lazy" width="390" height="780" /><figcaption>Dépenses annuelles</figcaption></figure>
+        <figure class="phone"><img src="./notice/15-global-epargne.webp" alt="Compte épargne et mouvements" loading="lazy" width="390" height="780" /><figcaption>Épargne</figcaption></figure>
+      </div>
+    </section>
+
+    <!-- 7 ------------------------------------------------------------------ -->
+    <section class="chapter" id="analyses">
+      <div class="chapter-head"><span class="num">7</span><h2 class="chapter-title">Faire le point et fixer ses budgets</h2></div>
+      <p class="moment">Le dimanche, tranquillement : comment évoluent les dépenses ?</p>
+
+      <div class="step duo">
+        <div>
+          <h3>Les 12 derniers mois</h3>
+          <p>Touchez <span class="ui">Analyses</span> en bas. Le graphique montre les dépenses de chaque mois. Touchez une catégorie (Légumes, Pain…) pour ne voir qu'elle, et touchez une colonne pour lire le montant exact.</p>
+          <h3>Orienter le budget</h3>
+          <p>Pour chaque catégorie, l'application affiche ce mois-ci et la moyenne des 3 et 6 derniers mois. Une <strong>tendance</strong> en rouge signale une hausse.</p>
+          <p>Tapez un <strong>budget mensuel</strong> dans la case, ou touchez le montant proposé (par exemple <span class="ui">45,00 € ?</span>) pour l'accepter. Ces budgets alimentent les barres et les alertes de l'accueil, ainsi que la liste de courses.</p>
+          <h3>Prévision sur 12 mois</h3>
+          <p>Tout en bas, l'application estime ce qu'il restera sur l'année, au rythme actuel. C'est le bon endroit pour <strong>prévoir les imprévus</strong> : si la marge est positive, elle indique combien mettre de côté chaque mois.</p>
+        </div>
+        <figure class="phone"><img src="./notice/17-analyses.webp" alt="Graphique des dépenses des 12 derniers mois" loading="lazy" width="390" height="780" /><figcaption>L'évolution mois par mois</figcaption></figure>
+        <figure class="phone"><img src="./notice/18-analyses-budget.webp" alt="Moyennes par catégorie et budgets mensuels" loading="lazy" width="390" height="780" /><figcaption>Fixer un budget</figcaption></figure>
+      </div>
+    </section>
+
+    <!-- 8 ------------------------------------------------------------------ -->
+    <section class="chapter" id="prix">
+      <div class="chapter-head"><span class="num">8</span><h2 class="chapter-title">Suivre les prix</h2></div>
+      <p class="moment">Les bananes ont-elles augmenté ? Où sont-elles les moins chères ?</p>
+
+      <div class="step duo">
+        <div>
+          <h3>Inflation des prix</h3>
+          <p>Depuis <span class="ui">Analyses</span>, touchez <span class="ui">Inflation des prix →</span>. Pour les légumes et le divers, chaque ligne compare le <strong>premier</strong> et le <strong>dernier prix</strong> d'un article dans un même magasin, hors promotion :</p>
+          <ul>
+            <li><strong style="color:#d03b3b">+ en rouge</strong> : le prix a augmenté ;</li>
+            <li><strong style="color:#006300">− en vert</strong> : il a baissé.</li>
+          </ul>
+          <h3>L'évolution d'un produit</h3>
+          <p><strong>Touchez une ligne</strong> pour ouvrir la fiche du produit. Elle montre un graphique avec <strong>une couleur par magasin</strong> et l'historique de tous les achats.</p>
+          <p>Les <strong>petits cercles vides</strong> sont des prix relevés dans d'autres magasins. Le cadre jaune indique si on peut trouver moins cher, et de combien.</p>
+          <p class="tip"><strong>Depuis la saisie aussi</strong>Le lien <em>« évolution du prix »</em> dans le cadre bleu de la saisie ouvre directement cette fiche.</p>
+        </div>
+        <figure class="phone"><img src="./notice/19-inflation.webp" alt="Tableau d'inflation des prix" loading="lazy" width="390" height="780" /><figcaption>Hausses et baisses</figcaption></figure>
+        <figure class="phone"><img src="./notice/20-article.webp" alt="Graphique d'évolution du prix des bananes par magasin" loading="lazy" width="390" height="780" /><figcaption>La fiche d'un produit</figcaption></figure>
+      </div>
+    </section>
+
+    <!-- FAQ ---------------------------------------------------------------- -->
+    <section class="chapter faq" id="faq">
+      <div class="chapter-head"><span class="num">?</span><h2 class="chapter-title">Bon à savoir</h2></div>
+
+      <details>
+        <summary>Un achat du 28 septembre, je le compte en septembre ou en octobre ?</summary>
+        <p>Comme vous préférez : la <strong>date</strong> est celle du ticket, le <strong>mois comptable</strong> est celui choisi en haut de l'écran. Pour compter un achat de fin septembre dans octobre, laissez simplement octobre en haut.</p>
+      </details>
+      <details>
+        <summary>Comment changer de mois ?</summary>
+        <p>Avec les flèches <kbd>‹</kbd> <kbd>›</kbd> en haut de l'écran, ou en touchant le nom du mois ou l'année.</p>
+      </details>
+      <details>
+        <summary>Le solde du mois précédent est faux.</summary>
+        <p>Dans <span class="ui">Global</span>, touchez la ligne « Solde fin … » et tapez le bon montant. Pour revenir au calcul automatique, videz la case.</p>
+      </details>
+      <details>
+        <summary>Je me suis trompé de catégorie pour un article.</summary>
+        <p>Touchez la roue dentée ⚙ en haut à gauche, puis <strong>Articles</strong>. Choisissez la catégorie, touchez l'article, et changez sa catégorie ou son nom.</p>
+      </details>
+      <details>
+        <summary>Où régler les catégories, les magasins et les objectifs ?</summary>
+        <p>Avec la roue dentée ⚙ en haut à gauche : budget de chaque catégorie, ordre d'affichage, magasins, plafond des dépenses annuelles et réserve « imprévus » visée.</p>
+      </details>
+      <details>
+        <summary>Faut-il du réseau ?</summary>
+        <p>Oui, pour enregistrer : les données sont conservées en lieu sûr sur internet, pas seulement dans le téléphone. Si le téléphone est perdu ou changé, rien n'est perdu : il suffit de se reconnecter.</p>
+      </details>
+      <details>
+        <summary>Qui peut voir mes comptes ?</summary>
+        <p>Personne d'autre que vous : il faut votre e-mail et votre mot de passe. L'application est protégée de façon que chaque compte ne voie que ses propres données.</p>
+      </details>
+      <details>
+        <summary>J'ai oublié mon mot de passe.</summary>
+        <p>Demandez à la personne qui a installé l'application : elle peut le remettre à zéro.</p>
+      </details>
+      <details>
+        <summary>Où retrouver cette notice ?</summary>
+        <p>Dans l'application, touchez le <strong>?</strong> en haut à droite de l'écran.</p>
+      </details>
+
+      <a class="cta" href="./">Ouvrir l'application</a>
+    </section>
+
+    <footer>Comptes — notice d'utilisation</footer>
+  </main>
+</body>
+</html>

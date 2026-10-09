@@ -1,6 +1,6 @@
 // Service worker : rend l'application installable et permet de l'ouvrir hors connexion.
 // Les données (Supabase) ne sont jamais mises en cache : elles viennent toujours du réseau.
-const CACHE = 'comptes-v2'
+const CACHE = 'comptes-v3'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './manifest.webmanifest', './icon-192.png'])))
@@ -22,11 +22,12 @@ self.addEventListener('fetch', (event) => {
   // Pages : réseau d'abord (toujours la dernière version), cache si hors connexion.
   if (req.mode === 'navigate') {
     event.respondWith(
+      // Chaque page est gardée sous sa propre adresse (application, notice…).
       fetch(req).then((res) => {
         const copy = res.clone()
-        caches.open(CACHE).then((c) => c.put('./index.html', copy))
+        caches.open(CACHE).then((c) => c.put(req, copy))
         return res
-      }).catch(() => caches.match('./index.html')),
+      }).catch(() => caches.match(req).then((hit) => hit ?? caches.match('./index.html'))),
     )
     return
   }

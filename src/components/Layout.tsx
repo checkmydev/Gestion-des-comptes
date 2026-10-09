@@ -50,6 +50,12 @@ export function Layout() {
           </svg>
         </NavLink>
         <MonthPicker />
+        <a href="./notice.html" className="settings-link" aria-label="Notice d'utilisation" title="Notice d'utilisation">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01" />
+          </svg>
+        </a>
       </header>
       <main className="main">
         {error && <p className="alert over">Erreur de connexion à la base : {error}</p>}

@@ -113,12 +113,12 @@ export default function Parametres() {
         <div className="list">
           {categories.map((c, i) => (
             <div key={c.id} className="row" style={{ flexWrap: 'nowrap' }}>
-              <button className="btn-ghost grow" style={{ justifyContent: 'flex-start', padding: 0 }} onClick={() => editCategory(c)}>
+              <button className="btn-ghost grow" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 0, padding: 0, color: 'var(--ink)' }} onClick={() => editCategory(c)}>
                 <span className={c.archived ? 'muted' : ''}>{c.name}</span>
+                <span className="muted small">
+                  {[c.weighed && '€/kg', c.track_inflation && 'inflation', c.monthly_budget && `budget ${eur(c.monthly_budget)}`, c.archived && 'archivée'].filter(Boolean).join(' · ')}
+                </span>
               </button>
-              <span className="muted small">
-                {[c.weighed && '€/kg', c.track_inflation && 'inflation', c.monthly_budget && eur(c.monthly_budget), c.archived && 'archivée'].filter(Boolean).join(' · ')}
-              </span>
               <button className="btn-ghost" aria-label="Monter" disabled={i === 0} onClick={() => move(c, -1)}>↑</button>
               <button className="btn-ghost" aria-label="Descendre" disabled={i === categories.length - 1} onClick={() => move(c, 1)}>↓</button>
             </div>
@@ -146,6 +146,7 @@ export default function Parametres() {
         </div>
       </section>
 
+      <a className="btn" href="./notice.html">Notice d'utilisation</a>
       <button onClick={() => supabase.auth.signOut()}>Se déconnecter</button>
 
       {form && <FormModal {...form} onClose={() => setForm(null)} />}

@@ -46,6 +46,7 @@ function Login() {
         </label>
         {error && <p className="error">{error}</p>}
         <button className="btn-primary btn-big" disabled={busy}>Se connecter</button>
+        <a href="./notice.html" className="small" style={{ textAlign: 'center' }}>Comment utiliser l'application ?</a>
       </form>
     </div>
   )

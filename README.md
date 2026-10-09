@@ -20,6 +20,13 @@ Corrections par rapport à l'Excel :
 - La formule des Légumes `(D*E/1000)-(F*E)` soustrayait `promo × €/kg` au lieu d'appliquer un pourcentage. L'application calcule **montant = quantité (kg) × €/kg × (1 − promo %)**.
 - Les totaux Légumes d'octobre valaient 0 € dans l'Excel (la formule visait la colonne vide), alors que le vrai total est 40,03 €.
 
+## Notice d'utilisation
+
+Une notice illustrée pour Papa (scénario d'une journée type) est publiée avec l'application :
+[`public/notice.html`](public/notice.html), en ligne sur `…/Gestion-des-comptes/notice.html` et accessible
+depuis le bouton **?** de l'application. Les captures (`public/notice/`) sont faites avec des données
+de démonstration fictives : le dépôt est public, on n'y met jamais de vraies captures.
+
 ## Mise en place (une seule fois)
 
 ### 1. Supabase
