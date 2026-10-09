@@ -211,19 +211,37 @@ for (const ws of wb.worksheets) {
   // Ligne d'en-tête d'un bloc : même ligne ou une des deux suivantes, avec « Magasin / Qui / Occasion / Date » à droite.
   const headerRow = (r, c) => [r, r + 1, r + 2].find((rr) => /magasin|qui|occasion|date/i.test(text(get(rr, c + 1)))) ?? null
   const get = (r, c) => (r > 0 && c > 0 ? cellValue(ws.getRow(r).getCell(c)) : null)
+  // Bloc sans ligne d'en-tête (février à mai : Viande, Poulet…) : les achats suivent
+  // directement le titre, dans l'ordre nom | magasin | montant | total.
+  const positional = (r, c) => number(get(r, c + 2)) == null
+    && [r + 1, r + 2].some((rr) => number(get(rr, c + 2)) != null || number(get(rr, c + 3)) != null)
+  // Début d'un nouveau bloc (et non un article dont le nom contient « poulet », « viande »…)
+  const isBlockStart = (r, c) => {
+    const n = text(get(r, c))
+    return (CATEGORIES.some((x) => x.re.test(n)) || FUEL_RE.test(n)) && number(get(r, c + 2)) == null
+      && (headerRow(r, c) != null || positional(r, c))
+  }
 
   for (let r = 1; r <= ws.rowCount; r++) {
     for (let c = 1; c <= ws.columnCount; c++) {
+      // Cellule fusionnée : seule la première porte réellement le titre du bloc
+      const cell = ws.getRow(r).getCell(c)
+      if (cell.isMerged && cell.master.address !== cell.address) continue
       const label = text(get(r, c))
       if (!label) continue
       const cat = CATEGORIES.find((x) => x.re.test(label))
       const isFuel = FUEL_RE.test(label)
       if (!cat && !isFuel) continue
 
-      const hr = headerRow(r, c)
-      if (!hr) continue
+      let hr = headerRow(r, c)
       const cols = {}
-      for (let cc = c + 1; cc <= c + 8; cc++) {
+      const noHeader = hr == null
+      if (noHeader) {
+        if (!positional(r, c)) continue
+        hr = r
+        Object.assign(cols, { store: c + 1, amount: c + 2, total: c + 3 })
+      }
+      for (let cc = c + 1; cc <= c + 8 && !noHeader; cc++) {
         const h = deaccent(text(get(hr, cc))).toLowerCase()
         if (!h) continue
         if (/magasin|qui|occasion/.test(h) && !cols.store) cols.store = cc
@@ -235,6 +253,10 @@ for (const ws of wb.worksheets) {
         else if (/^total/.test(h)) { cols.total = cc; break }
       }
       if (!cols.amount && !cols.total) continue
+      // Bloc « écos possibles » (colonne « Réalisé ? ») : suivi des économies envisagées,
+      // pas des dépenses (Papa ne le reprend pas dans son Global).
+      const lastCol = (cols.total ?? cols.amount) + 1 // la colonne « Réalisé ? » suit le total
+      if (!noHeader && Array.from({ length: lastCol - c + 1 }, (_, k) => c + k).some((cc) => /r[ée]alis/i.test(text(get(hr, cc))))) continue
 
       let sum = 0
       let excelTotal = null
@@ -244,7 +266,7 @@ for (const ws of wb.worksheets) {
           excelTotal = number(get(rr, cols.total ?? cols.amount))
           break
         }
-        if (rr > hr + 1 && (CATEGORIES.some((x) => x.re.test(nameRaw)) || FUEL_RE.test(nameRaw)) && headerRow(rr, c)) break
+        if (rr > hr + 1 && isBlockStart(rr, c)) break
         if (!nameRaw) continue
         const amount = number(get(rr, cols.amount)) ?? number(get(rr, cols.total))
         if (!amount || amount <= 0) continue
@@ -284,10 +306,39 @@ for (const ws of wb.worksheets) {
         })
         sum += amount
       }
+      if (process.env.DEBUG_BLOCS) console.log(`[bloc] ${ws.name} ${ws.getRow(r).getCell(c).address} « ${label} » ${noHeader ? "sans en-tête" : "en-tête ligne " + hr} → ${Math.round(sum * 100) / 100} €`)
       report.push({ feuille: ws.name, bloc: isFuel ? 'Essence' : cat.name, lignes: purchases.filter((p) => p.period === period && p.category === cat?.name).length, importe: Math.round(sum * 100) / 100, totalExcel: excelTotal })
     }
   }
 }
+
+// Doublons : un même achat noté dans deux blocs (ex. « Cadeaux filles » 32 € dans Divers
+// et dans Frais extra). Même article, même montant, même mois, même date (ou date absente
+// d'un côté), catégories différentes → on n'en garde qu'un. On garde de préférence la
+// catégorie la plus précise (on retire d'abord « Frais extra », puis « Divers »).
+const DROP_FIRST = ['Frais extra', 'Divers']
+const normName = (s) => deaccent(s).toLowerCase().replace(/[^a-z]/g, '')
+const duplicates = []
+for (let i = 0; i < purchases.length; i++) {
+  const a = purchases[i]
+  if (a.dropped) continue
+  for (let j = i + 1; j < purchases.length; j++) {
+    const b = purchases[j]
+    if (b.dropped || a.category === b.category || a.period !== b.period || a.amount !== b.amount) continue
+    if (normName(a.item) !== normName(b.item)) continue
+    if (a.date && b.date && a.date !== b.date) continue
+    const rank = (p) => { const k = DROP_FIRST.indexOf(p.category); return k < 0 ? 99 : k }
+    const drop = rank(a) <= rank(b) ? a : b
+    drop.dropped = true
+    duplicates.push({ mois: a.period.slice(5, 7), article: a.item, montant: a.amount, garde: (drop === a ? b : a).category, retire: drop.category })
+    if (drop === a) break
+  }
+}
+if (duplicates.length) {
+  console.log(`\n${duplicates.length} doublon(s) retiré(s) (même achat noté dans deux blocs) :`)
+  console.table(duplicates)
+}
+for (let i = purchases.length - 1; i >= 0; i--) if (purchases[i].dropped) purchases.splice(i, 1)
 
 // Fusion des blocs identiques (une même catégorie peut apparaître deux fois)
 const merged = new Map()
