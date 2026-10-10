@@ -32,6 +32,8 @@ Règles de lecture :
 - « categorie » : une des catégories fournies. Fruits et légumes frais → la catégorie pesée (Légumes).
 - « incertain » = true si la ligne est mal lisible ou si tu as dû deviner.
 - Date au format AAAA-MM-JJ ; magasin : reprends le nom d'un magasin connu s'il correspond (ex. « DELHAIZE WAVRE » → « Delhaize »).
+- « article » doit nommer le produit : jamais une simple quantité ou un format (« 6 litres », « 4x125g ») ; si un article connu porte un nom de ce genre pour le même produit, reprends-le tel quel.
+- Ticket de station-service (Shell, Esso, TotalEnergies, Q8, Dats 24, Lukoil, Texaco…) : type = « carburant » ; magasin = nom de la station ; litres, prix_litre et montant_carburant = la ligne de carburant (« 42,31 L x 1,749 €/L = 74,00 € »). Le carburant n'est PAS une ligne de « lignes » : n'y mets que les autres achats éventuels (café, lavage, boisson…). Sinon, type = « courses » et litres, prix_litre, montant_carburant = null.
 - Si la photo n'est pas un ticket de caisse ou est illisible, renvoie une liste vide et explique-le dans « remarque ».`
 
 Deno.serve(async (req: Request) => {
@@ -81,8 +83,12 @@ Deno.serve(async (req: Request) => {
   const schema = {
     type: 'object',
     additionalProperties: false,
-    required: ['magasin', 'date', 'total_ticket', 'lignes', 'remarque'],
+    required: ['type', 'magasin', 'date', 'total_ticket', 'litres', 'prix_litre', 'montant_carburant', 'lignes', 'remarque'],
     properties: {
+      type: { type: 'string', enum: ['courses', 'carburant'] },
+      litres: nullable('number', 'carburant : nombre de litres'),
+      prix_litre: nullable('number', 'carburant : prix au litre'),
+      montant_carburant: nullable('number', 'carburant : montant payé pour le carburant'),
       magasin: nullable('string'),
       date: nullable('string', 'AAAA-MM-JJ'),
       total_ticket: nullable('number', 'total payé indiqué sur le ticket'),

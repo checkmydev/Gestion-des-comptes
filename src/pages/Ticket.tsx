@@ -5,7 +5,7 @@ import { patchConversationMessage } from '../lib/chat'
 import { eur, longDate, parseAmount, todayIso } from '../lib/format'
 import { cycleLabel, periodForDate, periodLabel } from '../lib/period'
 import { productIcon } from '../lib/icons'
-import { compressPhoto, readTicket, saveTicket, takeHandoff, ticketText, type TicketDraft, type TicketRow as Row } from '../lib/ticket'
+import { compressPhoto, DuplicateTicketError, readTicket, saveTicket, takeHandoff, ticketText, type FuelDraft, type TicketDraft, type TicketRow as Row } from '../lib/ticket'
 
 /**
  * Scanner un ticket de caisse : photo → lecture automatique → vérification → enregistrement.
@@ -24,6 +24,7 @@ export default function Ticket() {
   const [ticketTotal, setTicketTotal] = useState<number | null>(null)
   const [remark, setRemark] = useState<string | null>(null)
   const [rows, setRows] = useState<Row[]>([])
+  const [fuel, setFuel] = useState<FuelDraft | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState<{ article: string; category: string; amount: number }[]>([])
   const [zoom, setZoom] = useState(false)
@@ -32,7 +33,7 @@ export default function Ticket() {
   const catById = (id: number) => categories.find((c) => c.id === id)
 
   function load(d: TicketDraft) {
-    setStore(d.store); setDate(d.date); setTicketTotal(d.total); setRemark(d.remark); setRows(d.rows)
+    setStore(d.store); setDate(d.date); setTicketTotal(d.total); setRemark(d.remark); setRows(d.rows); setFuel(d.fuel ?? null)
   }
 
   // Ticket venu du chat
@@ -62,25 +63,32 @@ export default function Ticket() {
 
   const update = (i: number, patch: Partial<Row>) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)))
   const kept = rows.filter((r) => r.keep)
-  const sum = useMemo(() => Math.round(kept.reduce((a, r) => a + (parseAmount(r.amount) ?? 0), 0) * 100) / 100, [kept])
+  const sum = useMemo(() => Math.round((kept.reduce((a, r) => a + (parseAmount(r.amount) ?? 0), 0) + (fuel ? parseAmount(fuel.amount) ?? 0 : 0)) * 100) / 100, [kept, fuel])
   const gap = ticketTotal != null ? Math.round((sum - ticketTotal) * 100) / 100 : null
-  const invalid = kept.some((r) => !r.article.trim() || parseAmount(r.amount) == null)
+  const invalid = kept.some((r) => !r.article.trim() || parseAmount(r.amount) == null) || (fuel != null && parseAmount(fuel.amount) == null) || (!kept.length && !fuel)
 
   async function save() {
-    if (invalid || !kept.length) return
+    if (invalid) return
     if (gap != null && Math.abs(gap) > 0.02 && !confirm(`Le total des lignes (${eur(sum)}) ne correspond pas au ticket (${eur(ticketTotal!)}). Enregistrer quand même ?`)) return
     setSaving(true)
     setError(null)
     try {
-      const draft: TicketDraft = { store, date, total: ticketTotal, remark, rows }
-      const recap = await saveTicket(draft, { categories, ensureItem, ensureStore })
+      const draft: TicketDraft = { store, date, total: ticketTotal, remark, rows, fuel }
+      let recap
+      try {
+        recap = await saveTicket(draft, { categories, ensureItem, ensureStore })
+      } catch (e) {
+        if (!(e instanceof DuplicateTicketError)) throw e
+        if (!confirm(`${e.message}\n\nAvez-vous photographié deux fois le même ticket ? Touchez « Annuler » pour ne pas l'enregistrer une deuxième fois, ou « OK » si c'est vraiment un autre achat.`)) return
+        recap = await saveTicket(draft, { categories, ensureItem, ensureStore }, { force: true })
+      }
       if (fromChat?.conversationId != null) {
         // Retour dans la conversation : la fiche du ticket passe à « enregistré »
         await patchConversationMessage(fromChat.conversationId, fromChat.messageIndex, { content: ticketText(draft, categories, recap), ticket: { draft, recap } })
         navigate('/assistant')
         return
       }
-      setSaved(recap.lines)
+      setSaved([...(recap.fuel ? [{ article: `⛽ Plein${recap.fuel.litres != null ? ` (${String(recap.fuel.litres).replace('.', ',')} L)` : ''}`, category: 'Essence', amount: recap.fuel.amount }] : []), ...recap.lines])
       setStep('fini')
     } catch (e) {
       setError((e as Error).message)
@@ -181,6 +189,19 @@ export default function Ticket() {
             {remark && <p className="alert" style={{ margin: 0 }}>{remark}</p>}
           </div>
 
+          {fuel && (
+            <div className="card stack" style={{ gap: 10 }}>
+              <h2>⛽ Plein d'essence</h2>
+              <div className="grid2">
+                <label className="field">Litres<input inputMode="decimal" value={fuel.litres} onChange={(e) => setFuel({ ...fuel, litres: e.target.value })} /></label>
+                <label className="field">€/litre<input inputMode="decimal" value={fuel.ppl} onChange={(e) => setFuel({ ...fuel, ppl: e.target.value })} /></label>
+                <label className="field">Montant payé (€)<input inputMode="decimal" value={fuel.amount} onChange={(e) => setFuel({ ...fuel, amount: e.target.value })} style={{ fontWeight: 700 }} /></label>
+                <label className="field">Compteur (km)<input inputMode="numeric" value={fuel.km} placeholder="facultatif" onChange={(e) => setFuel({ ...fuel, km: e.target.value })} /></label>
+              </div>
+              <p className="muted small" style={{ margin: 0 }}>Enregistré dans l'onglet Essence. Avec le compteur, la consommation aux 100 km est calculée.</p>
+            </div>
+          )}
+
           <p className="small ink2" style={{ margin: 0 }}>Touchez un champ pour le corriger ; décochez une ligne pour ne pas l'enregistrer.</p>
 
           {rows.map((r, i) => {
@@ -229,8 +250,8 @@ export default function Ticket() {
           </div>
 
           {error && <p className="alert over" style={{ margin: 0 }}>{error}</p>}
-          <button className="btn-primary btn-big" disabled={saving || invalid || !kept.length} onClick={save}>
-            {saving ? 'Enregistrement…' : `✓ Valider et enregistrer ${kept.length} achat${kept.length > 1 ? 's' : ''}`}
+          <button className="btn-primary btn-big" disabled={saving || invalid} onClick={save}>
+            {saving ? 'Enregistrement…' : `✓ Valider et enregistrer ${[fuel ? 'le plein' : '', kept.length ? `${kept.length} achat${kept.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' et ')}`}
           </button>
           <button className="btn-ghost" onClick={reset}>Recommencer avec une autre photo</button>
         </>

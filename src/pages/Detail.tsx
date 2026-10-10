@@ -51,6 +51,7 @@ export default function Detail() {
       </div>
         <span className="strong">{eur(total)}</span>
       </div>
+      <Link to="/tickets" className="btn btn-block">🧾 Revoir mes tickets scannés</Link>
 
       {visible.map((c) => {
         const rows = byCategory.get(c.id) ?? []

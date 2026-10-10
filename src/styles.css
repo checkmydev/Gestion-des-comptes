@@ -400,3 +400,6 @@ tfoot td { font-weight: 700; border-bottom: 0; }
 .conv-open { flex-direction: column; align-items: flex-start; gap: 2px; padding: 0; color: var(--ink); text-align: left; justify-content: flex-start; width: 100%; }
 .conv-actions { flex-wrap: nowrap; gap: 6px; }
 .conv-actions select { min-height: 44px; flex: 1; font-size: 0.95rem; padding: 6px 10px; }
+.fuel-box { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; margin: 6px 0 10px; border-radius: 12px; background: var(--surface-2); }
+.ticket-item .ticket-head { width: 100%; padding: 0; color: var(--ink); justify-content: space-between; gap: 10px; min-height: 56px; }
+.ticket-item.twin { border-left: 4px solid var(--warning); }

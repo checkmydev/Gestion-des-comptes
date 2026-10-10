@@ -42,9 +42,12 @@ export function FuelTab({ openForm }: TabProps) {
   const enriched = data.fills.map((f, i) => {
     const prev = data.fills.slice(0, i).reverse().find((x) => x.km != null)
     const delta = f.km != null && prev?.km != null ? Number(f.km) - Number(prev.km) : null
-    const litres = f.price_per_litre ? Number(f.total) / Number(f.price_per_litre) : null
+    // Litres : ceux encodés, sinon déduits du prix au litre
+    const litres = f.litres != null ? Number(f.litres) : f.price_per_litre ? Number(f.total) / Number(f.price_per_litre) : null
+    const ppl = f.price_per_litre != null ? Number(f.price_per_litre) : litres ? Number(f.total) / litres : null
+    // Consommation (méthode du plein complet) : litres de ce plein / km parcourus depuis le précédent
     const per100 = delta && delta > 0 && litres ? (litres / delta) * 100 : null
-    return { ...f, delta, per100 }
+    return { ...f, delta, per100, litres, ppl }
   })
   const fills = enriched.filter((f) => f.period === period)
   const stations = [...new Set(data.fills.map((f) => f.station))]
@@ -55,8 +58,9 @@ export function FuelTab({ openForm }: TabProps) {
     fields: [
       { key: 'station', label: 'Station', type: 'text', required: true, placeholder: stations[0] ?? 'Shell Bierges' },
       { key: 'filled_on', label: 'Date', type: 'date' },
-      { key: 'price_per_litre', label: '€/litre', type: 'amount' },
-      { key: 'km', label: 'Compteur (km)', type: 'number' },
+      { key: 'litres', label: 'Litres', type: 'amount', hint: 'sur le ticket de la pompe' },
+      { key: 'km', label: 'Compteur (km)', type: 'number', hint: 'pour calculer la consommation aux 100 km' },
+      { key: 'price_per_litre', label: '€/litre', type: 'amount', hint: 'facultatif si les litres sont connus' },
       { key: 'total', label: 'Total payé (€)', type: 'amount', required: true },
     ],
     initial: f ?? { filled_on: todayIso(), station: stations[stations.length - 1] ?? '' },
@@ -84,29 +88,32 @@ export function FuelTab({ openForm }: TabProps) {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Station</th><th>Date</th><th className="num">€/l</th><th className="num">km</th><th className="num">Δ km</th><th className="num">Total</th></tr>
+              <tr><th>Station</th><th className="num">Litres</th><th className="num">km</th><th className="num">l/100 km</th><th className="num">Total</th></tr>
             </thead>
             <tbody>
               {fills.map((f) => (
                 <tr key={f.id} className="clickable" onClick={() => editFill(f)}>
-                  <td>{f.station}</td>
-                  <td>{shortDate(f.filled_on)}</td>
-                  <td className="num">{num(f.price_per_litre)}</td>
-                  <td className="num">{num(f.km)}</td>
+                  <td>{f.station}<div className="muted small">{shortDate(f.filled_on)}</div></td>
                   <td className="num">
-                    {f.delta != null && num(f.delta)}
-                    {f.per100 != null && <div className="muted small">{num(Math.round(f.per100 * 10) / 10)} l/100</div>}
+                    {f.litres != null ? num(Math.round(f.litres * 100) / 100) : '—'}
+                    {f.ppl != null && <div className="muted small">{num(Math.round(f.ppl * 1000) / 1000)} €/l</div>}
                   </td>
+                  <td className="num">
+                    {num(f.km)}
+                    {f.delta != null && <div className="muted small">+{num(f.delta)} km</div>}
+                  </td>
+                  <td className="num"><strong>{f.per100 != null ? num(Math.round(f.per100 * 10) / 10) : '—'}</strong></td>
                   <td className="num">{eur(f.total)}</td>
                 </tr>
               ))}
-              {!fills.length && <tr><td colSpan={6} className="muted">Aucun plein ce mois-ci.</td></tr>}
+              {!fills.length && <tr><td colSpan={5} className="muted">Aucun plein ce mois-ci.</td></tr>}
             </tbody>
             <tfoot>
-              <tr><td colSpan={5}>Total essence (repris dans le Global)</td><td className="num">{eur(fills.reduce((a, f) => a + Number(f.total), 0))}</td></tr>
+              <tr><td colSpan={4}>Total essence (repris dans le Global)</td><td className="num">{eur(fills.reduce((a, f) => a + Number(f.total), 0))}</td></tr>
             </tfoot>
           </table>
         </div>
+        <p className="muted small">Consommation aux 100 km : litres du plein ÷ km parcourus depuis le plein précédent. Il faut les litres et le compteur à chaque plein, réservoir rempli.</p>
         <button className="btn-ghost" onClick={() => editFill()}>+ Ajouter un plein</button>
       </section>
 

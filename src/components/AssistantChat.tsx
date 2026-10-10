@@ -7,7 +7,8 @@ import { productIcon } from '../lib/icons'
 import { periodLabel } from '../lib/period'
 import { supabase } from '../lib/supabase'
 import {
-  compressPhoto, draftGap, draftInvalid, draftSum, keptRows, readTicket, saveTicket, storeHandoff, takePendingPhoto, ticketText,
+  compressPhoto, draftGap, draftInvalid, draftSum, DuplicateTicketError, keptRows, readTicket, saveTicket, storeHandoff, takePendingPhoto, ticketText,
+  type TicketDraft,
 } from '../lib/ticket'
 import { checkOnlineVoice, dictationSupported, speak, stopSpeaking, unlockAudio, useDictation } from '../lib/voice'
 
@@ -133,7 +134,7 @@ function ThinkingBubble({ question, ticket }: { question: string; ticket: boolea
 }
 
 /** Fiche d'un ticket lu, dans la conversation : vérifier, enregistrer ou corriger. */
-function TicketCard({ m, onSave, onCorrect, saving }: { m: ChatMessage; onSave: () => void; onCorrect: () => void; saving: boolean }) {
+function TicketCard({ m, onSave, onCorrect, onDraft, saving }: { m: ChatMessage; onSave: () => void; onCorrect: () => void; onDraft: (d: TicketDraft) => void; saving: boolean }) {
   const { categories } = useApp()
   const t = m.ticket!
   const d = t.draft
@@ -142,10 +143,13 @@ function TicketCard({ m, onSave, onCorrect, saving }: { m: ChatMessage; onSave: 
     return (
       <div className="bubble assistant ticket-card">
         <p className="ticket-done">✓ Ticket enregistré</p>
-        <p>
+        {t.recap.fuel && (
+          <p>⛽ <strong>Plein de {eur(t.recap.fuel.amount)}</strong>{t.recap.fuel.litres != null ? <> ({String(t.recap.fuel.litres).replace('.', ',')} L)</> : null} ajouté dans l'onglet Essence{t.recap.fuel.km == null ? ' — sans compteur, la consommation ne peut pas être calculée' : ''}.</p>
+        )}
+        {t.recap.lines.length > 0 && <p>
           <strong>{t.recap.lines.length} achat{t.recap.lines.length > 1 ? 's' : ''}</strong>{t.recap.store ? <> chez <strong>{t.recap.store}</strong></> : null}, le {longDate(t.recap.date)},
-          pour <strong>{eur(t.recap.total)}</strong>, compté{t.recap.lines.length > 1 ? 's' : ''} en <span className="capitalize">{periodLabel(t.recap.period)}</span>.
-        </p>
+          pour <strong>{eur(t.recap.total - (t.recap.fuel?.amount ?? 0))}</strong>, compté{t.recap.lines.length > 1 ? 's' : ''} en <span className="capitalize">{periodLabel(t.recap.period)}</span>.
+        </p>}
         <p className="muted small">Une erreur ? Dites-le-moi simplement, par exemple « le beurre coûtait 2,29 € » ou « supprime la consigne ».</p>
       </div>
     )
@@ -164,7 +168,17 @@ function TicketCard({ m, onSave, onCorrect, saving }: { m: ChatMessage; onSave: 
         {gap != null && Math.abs(gap) > 0.02 && <li className="warn">⚠ Écart de {eur(Math.abs(gap))} avec le total du ticket ({eur(d.total!)})</li>}
         {uncertain > 0 && <li className="warn">⚠ {uncertain} ligne{uncertain > 1 ? 's' : ''} difficile{uncertain > 1 ? 's' : ''} à lire</li>}
       </ul>
-      <table className="ticket-lines">
+      {d.fuel && (
+        <div className="fuel-box">
+          <p style={{ margin: 0 }}>⛽ <strong>Plein d'essence</strong> : {d.fuel.litres ? <>{d.fuel.litres} L</> : 'litres non lus'}{d.fuel.ppl ? <> à {d.fuel.ppl} €/l</> : null} = <strong>{d.fuel.amount} €</strong></p>
+          <label className="field">
+            Compteur kilométrique (facultatif)
+            <input inputMode="numeric" value={d.fuel.km} placeholder="ex. 89 450" onChange={(e) => onDraft({ ...d, fuel: { ...d.fuel!, km: e.target.value } })} />
+          </label>
+          <p className="muted small" style={{ margin: 0 }}>Avec le compteur à chaque plein, l'application calcule la consommation aux 100 km.</p>
+        </div>
+      )}
+      {kept.length > 0 && <table className="ticket-lines">
         <tbody>
           {kept.map((r, i) => (
             <tr key={i} className={r.uncertain ? 'uncertain' : undefined}>
@@ -173,12 +187,12 @@ function TicketCard({ m, onSave, onCorrect, saving }: { m: ChatMessage; onSave: 
             </tr>
           ))}
         </tbody>
-      </table>
+      </table>}
       {d.remark && <p className="muted small">{d.remark}</p>}
       <p className="small"><strong>Vérifiez avec le ticket :</strong> si tout est juste, enregistrez. Sinon, touchez « Corriger ».</p>
       <div className="stack" style={{ gap: 8 }}>
         <button className="btn-primary btn-big" disabled={saving || draftInvalid(d) || !kept.length} onClick={onSave}>
-          {saving ? 'Enregistrement…' : `✓ Tout enregistrer (${kept.length} achat${kept.length > 1 ? 's' : ''})`}
+          {saving ? 'Enregistrement…' : `✓ Tout enregistrer (${[d.fuel ? 'le plein' : '', kept.length ? `${kept.length} achat${kept.length > 1 ? 's' : ''}` : ''].filter(Boolean).join(' et ')})`}
         </button>
         <button className="btn" disabled={saving} onClick={onCorrect}>✏️ Corriger une ligne</button>
       </div>
@@ -216,6 +230,9 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
   const photos = useRef(new Map<number, string>())
   /** Vrai quand l'utilisateur vient de commencer une nouvelle conversation (à ne pas remplacer). */
   const startedNewRef = useRef(false)
+  const conversationIdRef = useRef<number | null>(null)
+  const syncedAtRef = useRef<string | null>(null)
+  const savingRef = useRef(false)
 
   // Écran et mois affichés derrière le panneau (ou avant d'ouvrir l'assistant)
   const screenPath = (location.state as { from?: string } | null)?.from ?? location.pathname + location.search
@@ -232,6 +249,10 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
     if (!showPast) endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [messages, busy, conversationId, showPast, dictation.interim])
 
+  conversationIdRef.current = conversationId
+  syncedAtRef.current = syncedAt
+  savingRef.current = savingTicket !== null
+
   function show(row: ConversationRow) {
     setGroup(row.groupe)
     setConversationId(row.id)
@@ -247,11 +268,13 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
     // Ancienne conversation gardée seulement sur l'appareil (avant la sauvegarde en base) : effacée.
     if (loadCurrentId() === null) setMessages([])
     async function latest() {
-      if (startedNewRef.current || busyRef.current) return
+      if (startedNewRef.current || busyRef.current || savingRef.current) return
       const { data } = await supabase.from('assistant_conversations')
         .select(CONVERSATION_FIELDS).order('updated_at', { ascending: false }).limit(1)
       const row = (data as ConversationRow[] | null)?.[0]
-      if (cancelled || startedNewRef.current || busyRef.current) return
+      if (cancelled || startedNewRef.current || busyRef.current || savingRef.current) return
+      // La même conversation, déjà à jour ici : rien à recharger (évite d'écraser un enregistrement en cours)
+      if (row && row.id === conversationIdRef.current && row.updated_at === syncedAtRef.current) return
       if (!row) {
         // Plus aucune conversation en base (effacées ailleurs) : la copie locale disparaît aussi.
         if (loadCurrentId() !== null) { setConversationId(null); setMessages([]); setSummary({ resume: null, count: 0 }); setSyncedAt(null) }
@@ -461,7 +484,19 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
     if (gap != null && Math.abs(gap) > 0.02 && !confirm(`Le total des lignes (${eur(draftSum(d))}) ne correspond pas au ticket (${eur(d.total!)}). Enregistrer quand même ?`)) return
     setSavingTicket(i)
     try {
-      const recap = await saveTicket(d, { categories, ensureItem, ensureStore })
+      let recap
+      try {
+        recap = await saveTicket(d, { categories, ensureItem, ensureStore })
+      } catch (e) {
+        if (!(e instanceof DuplicateTicketError)) throw e
+        if (!confirm(`${e.message}\n\nAvez-vous photographié deux fois le même ticket ? Touchez « Annuler » pour ne pas l'enregistrer une deuxième fois, ou « OK » si c'est vraiment un autre achat.`)) {
+          const final = messages.map((x, j) => (j === i ? { ...x, content: `${x.content}\n(Non enregistré : déjà enregistré auparavant.)`, ticket: undefined } : x))
+          setMessages(final)
+          await persist(final, conversationId, summary)
+          return
+        }
+        recap = await saveTicket(d, { categories, ensureItem, ensureStore }, { force: true })
+      }
       const final = messages.map((x, j) => (j === i ? { ...x, content: ticketText(d, categories, recap), ticket: { draft: d, recap } } : x))
       setMessages(final)
       await persist(final, conversationId, summary)
@@ -573,7 +608,8 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
 
         <div className="stack" style={{ gap: 12 }}>
           {messages.map((m, i) => (m.ticket
-            ? <TicketCard key={i} m={m} saving={savingTicket === i} onSave={() => void saveCard(i)} onCorrect={() => correctCard(i)} />
+            ? <TicketCard key={i} m={m} saving={savingTicket === i} onSave={() => void saveCard(i)} onCorrect={() => correctCard(i)}
+                onDraft={(d) => setMessages((list) => list.map((x, j) => (j === i && x.ticket ? { ...x, ticket: { ...x.ticket, draft: d } } : x)))} />
             : (
               <div key={i} className={`bubble ${m.role}${m.error ? ' error' : ''}`}>
                 {m.image && <img src={m.image} alt="Photo du ticket" className="bubble-photo" />}

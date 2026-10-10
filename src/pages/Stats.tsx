@@ -4,7 +4,7 @@ import { ColumnChart } from '../components/ColumnChart'
 import { Loading } from '../components/Layout'
 import { loadLedger, must, updateRow, type Ledger } from '../lib/api'
 import { useApp } from '../lib/app'
-import { categoryAverage, categoryTotal, summarize } from '../lib/budget'
+import { categoryAverage, categoryTotal, statsStart, summarize } from '../lib/budget'
 import { eur, MONTHS, parseAmount, pct } from '../lib/format'
 import { addMonths, parsePeriod, periodLabel } from '../lib/period'
 import { supabase } from '../lib/supabase'
@@ -35,7 +35,8 @@ export default function Stats() {
 
   const active = categories.filter((c) => !c.archived)
   const months = Array.from({ length: 12 }, (_, i) => addMonths(period, i - 11))
-  const firstData = ledger.totals.reduce<string | null>((m, t) => (m === null || t.period < m ? t.period : m), null)
+  // Premier mois des statistiques (réglage « Statistiques à partir de »)
+  const firstData = statsStart(ledger)
   const visibleMonths = months.filter((p) => firstData !== null && p >= firstData)
   const selCat = selected === 'all' ? null : categories.find((c) => c.id === selected)
   const valueOf = (p: string) => (selCat ? categoryTotal(ledger, selCat.id, p) : summarize(ledger, p).courant)

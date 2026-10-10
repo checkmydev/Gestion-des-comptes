@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Loading } from '../components/Layout'
 import { loadLedger, loadPurchasesSince, loadReferencesSince, type Ledger } from '../lib/api'
 import { useApp } from '../lib/app'
-import { categoryAverage, categoryTotal } from '../lib/budget'
+import { categoryAverage, categoryTotal, inStats } from '../lib/budget'
 import { eur, todayIso } from '../lib/format'
 import { currentPeriod, cycleDays, cycleLabel, periodLabel } from '../lib/period'
 import { planShopping, type Suggestion } from '../lib/shopping'
@@ -37,7 +37,7 @@ export default function Courses() {
     const since = new Date(Date.now() - 183 * 864e5).toISOString().slice(0, 10)
     const refSince = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10)
     Promise.all([loadLedger(), loadPurchasesSince(since), loadReferencesSince(refSince)])
-      .then(([ledger, purchases, refs]) => setData({ ledger, purchases, refs }))
+      .then(([ledger, purchases, refs]) => setData({ ledger, purchases: purchases.filter((p) => inStats(p.period)), refs }))
       .catch((e) => setError((e as Error).message))
   }, [])
 

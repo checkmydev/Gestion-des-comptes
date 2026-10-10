@@ -3,6 +3,7 @@ import { FormModal } from '../components/Modal'
 import { deleteRow, must, saveRow, saveSettings, updateRow } from '../lib/api'
 import { useApp } from '../lib/app'
 import { eur } from '../lib/format'
+import { addMonths, currentPeriod, periodLabel } from '../lib/period'
 import { supabase } from '../lib/supabase'
 import type { Category, Item, Store } from '../lib/types'
 import type { FormSpec } from './Global'
@@ -11,7 +12,13 @@ import { productIcon } from '../lib/icons'
 import { readTextSize, saveTextSize, TEXT_SIZES, type TextSize } from '../lib/textsize'
 import { bestVoice, checkOnlineVoice, frenchVoices, lastOnlineError, ONLINE_VOICES, onVoicesChanged, readVoiceSettings, saveVoiceSettings, speak, stopSpeaking, unlockAudio, type VoiceSettings as VoiceSettingsT } from '../lib/voice'
 
-const RATES = [{ value: 0.85, label: 'Lente' }, { value: 1, label: 'Normale' }, { value: 1.15, label: 'Rapide' }]
+/** Choix du début des statistiques : tout l'historique, ou un mois des deux dernières années. */
+const STATS_OPTIONS = [
+  { value: '', label: 'Tout l\'historique' },
+  ...Array.from({ length: 24 }, (_, i) => addMonths(currentPeriod(), -i)).map((p) => ({ value: p, label: periodLabel(p) })),
+]
+
+const RATES =[{ value: 0.85, label: 'Lente' }, { value: 1, label: 'Normale' }, { value: 1.15, label: 'Rapide' }]
 const SAMPLE = "Bonjour ! Ce mois-ci, vous avez dépensé 128,29 € en courses. C'est un peu moins que le mois dernier, bravo."
 
 /** Voix qui lit les réponses de l'assistant (propre à chaque appareil). */
@@ -178,9 +185,10 @@ export default function Parametres() {
     fields: [
       { key: 'annual_budget', label: 'Plafond des dépenses annuelles (€)', type: 'amount', required: true },
       { key: 'emergency_target', label: 'Réserve « imprévus » visée sur l\'épargne (€)', type: 'amount', required: true, hint: 'ex. 3 mois de dépenses' },
+      { key: 'stats_from', label: 'Statistiques à partir de', type: 'select', options: STATS_OPTIONS, hint: 'les mois plus anciens restent consultables, mais ne comptent plus dans les moyennes, tendances, inflation et liste de courses' },
     ],
-    initial: { ...settings },
-    onSave: async (v) => run(() => saveSettings({ annual_budget: Number(v.annual_budget), emergency_target: Number(v.emergency_target) })),
+    initial: { ...settings, stats_from: settings.stats_from ?? '' },
+    onSave: async (v) => run(() => saveSettings({ annual_budget: Number(v.annual_budget), emergency_target: Number(v.emergency_target), stats_from: String(v.stats_from ?? '') || null })),
   })
 
   return (
@@ -206,7 +214,7 @@ export default function Parametres() {
 
       <section className="card">
         <div className="spread"><h2>Objectifs</h2><button className="btn-ghost" onClick={editSettings}>Modifier</button></div>
-        <p className="small">Plafond annuel : <strong>{eur(settings.annual_budget)}</strong> · Réserve imprévus : <strong>{eur(settings.emergency_target)}</strong></p>
+        <p className="small">Plafond annuel : <strong>{eur(settings.annual_budget)}</strong> · Réserve imprévus : <strong>{eur(settings.emergency_target)}</strong> · Statistiques à partir de : <strong className="capitalize">{settings.stats_from ? periodLabel(settings.stats_from) : 'tout l\'historique'}</strong></p>
       </section>
 
       <section className="card">

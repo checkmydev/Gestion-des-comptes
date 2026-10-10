@@ -7,6 +7,7 @@ import { eur, longDate, pct } from '../lib/format'
 import { pointsFromPurchases, trendsByStore, UNIT_LABEL, type StoreTrend } from '../lib/prices'
 import type { Purchase } from '../lib/types'
 import { ProductIcon } from '../components/ProductIcon'
+import { inStats } from '../lib/budget'
 
 type Row = StoreTrend & { itemId: number; itemName: string; categoryName: string }
 
@@ -32,7 +33,7 @@ export default function Inflation() {
 
   useEffect(() => {
     const ids = trackedKey ? trackedKey.split(',').map(Number) : []
-    loadPurchasesForItems(ids).then(setPurchases).catch((e) => setError((e as Error).message))
+    loadPurchasesForItems(ids).then((ps) => setPurchases(ps.filter((p) => inStats(p.period)))).catch((e) => setError((e as Error).message))
   }, [trackedKey])
 
   const rows = useMemo<Row[]>(() => {

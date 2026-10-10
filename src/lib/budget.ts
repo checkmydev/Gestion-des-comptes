@@ -28,6 +28,23 @@ function earliestPeriod(ledger: Ledger): string | null {
   ].reduce<string | null>((min, p) => (min === null || p < min ? p : min), null)
 }
 
+// ---------------------------------------------------------------------------
+// Début des statistiques (Paramètres) : les mois plus anciens restent consultables
+// mais ne comptent plus dans les moyennes, tendances, inflation et liste de courses.
+// ---------------------------------------------------------------------------
+let STATS_FROM: string | null = null
+export function setStatsFrom(p: string | null) { STATS_FROM = p && /^\d{4}-\d{2}-01$/.test(p) ? p : null }
+export const statsFrom = () => STATS_FROM
+/** Ce mois compte-t-il dans les statistiques ? */
+export const inStats = (period: string) => STATS_FROM === null || period >= STATS_FROM
+
+/** Premier mois pris en compte par les statistiques. */
+export function statsStart(ledger: Ledger): string | null {
+  const first = earliestPeriod(ledger)
+  if (first === null) return null
+  return STATS_FROM && STATS_FROM > first ? STATS_FROM : first
+}
+
 export function summarize(ledger: Ledger, period: string): MonthSummary {
   const first = earliestPeriod(ledger)
   const memo = new Map<string, MonthSummary>()
@@ -68,7 +85,7 @@ export function categoryTotal(ledger: Ledger, categoryId: number, period: string
  * premier mois encodé).
  */
 export function categoryAverage(ledger: Ledger, categoryId: number, period: string, n = 3): number | null {
-  const first = earliestPeriod(ledger)
+  const first = statsStart(ledger)
   const periods = Array.from({ length: n }, (_, i) => addMonths(period, -(i + 1)))
     .filter((p) => first !== null && p >= first)
   if (!periods.length) return null

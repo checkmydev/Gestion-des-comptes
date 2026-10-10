@@ -219,7 +219,7 @@ const TOOLS: Anthropic.Beta.BetaToolUnion[] = [
       type: 'object',
       properties: {
         station: { type: 'string' }, total: { type: 'number' }, date: { type: 'string', description: 'AAAA-MM-JJ' },
-        prix_litre: { type: 'number' }, km: { type: 'number', description: 'compteur kilométrique' }, forcer: { type: 'boolean' },
+        litres: { type: 'number' }, prix_litre: { type: 'number' }, km: { type: 'number', description: 'compteur kilométrique (pour la consommation aux 100 km)' }, forcer: { type: 'boolean' },
       },
       required: ['station', 'total', 'date'],
       additionalProperties: false,
@@ -299,7 +299,7 @@ const TOOLS: Anthropic.Beta.BetaToolUnion[] = [
   },
   {
     name: 'modifier_ligne',
-    description: "Corrige une ligne obtenue avec lister_lignes. Champs possibles selon le type — lignes_mois : libelle, montant, section (revenu|fixe), note, reporter (recopiée le mois suivant) ; pleins : station, date, prix_litre, km, montant ; trajets : libelle, date, km_aller_retour ; postes_annuels : libelle, montant_annuel, mois_echeance (1-12) ; paiements_annuels : date, montant, note ; epargne : date, libelle, montant (+ apport, − retrait), note. Seuls les champs donnés changent. Annulable.",
+    description: "Corrige une ligne obtenue avec lister_lignes. Champs possibles selon le type — lignes_mois : libelle, montant, section (revenu|fixe), note, reporter (recopiée le mois suivant) ; pleins : station, date, litres, prix_litre, km, montant ; trajets : libelle, date, km_aller_retour ; postes_annuels : libelle, montant_annuel, mois_echeance (1-12) ; paiements_annuels : date, montant, note ; epargne : date, libelle, montant (+ apport, − retrait), note. Seuls les champs donnés changent. Annulable.",
     input_schema: {
       type: 'object',
       properties: {
@@ -309,7 +309,7 @@ const TOOLS: Anthropic.Beta.BetaToolUnion[] = [
           type: 'object',
           properties: {
             libelle: { type: 'string' }, montant: { type: 'number' }, section: { type: 'string', enum: ['revenu', 'fixe'] }, note: { type: 'string' },
-            reporter: { type: 'boolean' }, station: { type: 'string' }, date: { type: 'string' }, prix_litre: { type: 'number' }, km: { type: 'number' },
+            reporter: { type: 'boolean' }, station: { type: 'string' }, date: { type: 'string' }, litres: { type: 'number' }, prix_litre: { type: 'number' }, km: { type: 'number' },
             km_aller_retour: { type: 'number' }, montant_annuel: { type: 'number' }, mois_echeance: { type: 'integer' },
           },
           additionalProperties: false,
@@ -649,8 +649,8 @@ const LINE_TYPES: Record<string, LineSpec> = {
   },
   pleins: {
     table: 'fuel_fills', label: 'plein', select: '*', order: 'filled_on', period: true, dateCol: 'filled_on',
-    fields: { station: 'station', date: 'filled_on', prix_litre: 'price_per_litre', km: 'km', montant: 'total' },
-    show: (r) => ({ mois: r.period, date: r.filled_on, station: r.station, montant: Number(r.total), prix_litre: r.price_per_litre, km: r.km }),
+    fields: { station: 'station', date: 'filled_on', litres: 'litres', prix_litre: 'price_per_litre', km: 'km', montant: 'total' },
+    show: (r) => ({ mois: r.period, date: r.filled_on, station: r.station, montant: Number(r.total), litres: r.litres, prix_litre: r.price_per_litre, km: r.km }),
     name: (r) => `plein ${r.station} ${Number(r.total)} € le ${r.filled_on ?? '?'}`,
   },
   trajets: {
@@ -792,6 +792,7 @@ async function runTool(db: Db, name: string, input: Input, question: string, gro
       const saved = await must(db.from('fuel_fills').insert({
         period: periodForDate(date), station: str(input.station), filled_on: date, total,
         price_per_litre: Number(input.prix_litre) > 0 ? Number(input.prix_litre) : null, km: Number(input.km) > 0 ? Math.round(Number(input.km)) : null,
+        litres: Number(input.litres) > 0 ? round2(Number(input.litres)) : null,
       }).select('id').single()) as { id: number }
       await log('fuel_fills', saved.id, `Plein : ${str(input.station)}, ${total.toFixed(2)} €, le ${date}`)
       return { enregistre: true, numero: saved.id, station: str(input.station), date, total, mois_comptable: periodForDate(date) }
@@ -1317,6 +1318,13 @@ Deno.serve(async (req: Request) => {
   const today = new Date().toLocaleDateString('fr-BE', { timeZone: 'Europe/Brussels', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const sources = new Map<string, string>()
   const memory = await loadMemory(db)
+  const { data: settingsRow } = await db.from('user_settings').select('stats_from').maybeSingle()
+  const statsFrom = (settingsRow as { stats_from?: string | null } | null)?.stats_from ?? null
+  const statsText = statsFrom
+    ? `
+
+Statistiques : l'utilisateur a choisi de ne compter qu'à partir du mois comptable ${statsFrom}. Les mois antérieurs viennent d'un ancien fichier Excel, moins fiable : pour les moyennes, tendances, comparaisons et conseils, ne les utilise pas, sauf s'il le demande explicitement (ils restent consultables).`
+    : ''
   const memoryText = memory.length
     ? `Notes mémorisées sur l'utilisateur (à respecter) :\n${memory.map((m) => `- n°${m.id} : ${m.note}`).join('\n')}`
     : "Aucune note mémorisée pour l'instant."
@@ -1361,7 +1369,7 @@ Deno.serve(async (req: Request) => {
         output_config: { effort: 'medium' },
         system: [
           { type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } },
-          { type: 'text', text: `Aujourd'hui : ${today}. Mois comptable en cours : ${currentPeriod()}.\n\n${memoryText}${screenText}${voiceText}${resumeText}` },
+          { type: 'text', text: `Aujourd'hui : ${today}. Mois comptable en cours : ${currentPeriod()}.\n\n${memoryText}${statsText}${screenText}${voiceText}${resumeText}` },
         ],
         tools: TOOLS,
         ...(lastCall ? { tool_choice: { type: 'none' as const } } : {}),

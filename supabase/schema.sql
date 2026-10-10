@@ -67,6 +67,7 @@ create table purchases (
   units        numeric(8,2),                   -- nombre d'unités achetées (vide = 1)
   amount       numeric(10,2) not null,         -- montant payé
   note         text,
+  ticket_id    uuid,                 -- ticket scanné (toutes ses lignes le partagent)
   created_at   timestamptz not null default now()
 );
 create index purchases_period_idx on purchases (user_id, period);
@@ -123,7 +124,8 @@ create table annual_payments (
 create table user_settings (
   user_id       uuid primary key default auth.uid() references auth.users on delete cascade,
   annual_budget    numeric(10,2) not null default 2000, -- plafond des dépenses annuelles
-  emergency_target numeric(10,2) not null default 3000  -- réserve « imprévus » visée sur l'épargne
+  emergency_target numeric(10,2) not null default 3000, -- réserve « imprévus » visée sur l'épargne
+  stats_from       text                                   -- début des statistiques (AAAA-MM-01)
 );
 
 -- ---------------------------------------------------------------------------
@@ -149,7 +151,8 @@ create table fuel_fills (
   filled_on       date,
   price_per_litre numeric(6,3),
   km              numeric(10,0), -- compteur kilométrique
-  total           numeric(10,2) not null
+  total           numeric(10,2) not null,
+  litres          numeric(7,2)               -- litres du plein (consommation aux 100 km)
 );
 
 create table trips (

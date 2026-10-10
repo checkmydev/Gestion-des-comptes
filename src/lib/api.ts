@@ -49,7 +49,7 @@ export async function loadRefs() {
     supabase.from('categories').select('*').order('sort_order').order('name'),
     supabase.from('items').select('*').order('name'),
     supabase.from('stores').select('*').order('name'),
-    supabase.from('user_settings').select('annual_budget, emergency_target').maybeSingle(),
+    supabase.from('user_settings').select('annual_budget, emergency_target, stats_from').maybeSingle(),
   ])
   return {
     categories: must(categories) as Category[],
@@ -59,7 +59,7 @@ export async function loadRefs() {
   }
 }
 
-export async function saveSettings(s: UserSettings): Promise<void> {
+export async function saveSettings(s: Partial<UserSettings>): Promise<void> {
   const { data } = await supabase.auth.getUser()
   must(await supabase.from('user_settings').upsert({ user_id: data.user?.id, ...s }))
 }

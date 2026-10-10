@@ -19,6 +19,7 @@ import Parametres from './pages/Parametres'
 import Saisie from './pages/Saisie'
 import Stats from './pages/Stats'
 import Ticket from './pages/Ticket'
+import Tickets from './pages/Tickets'
 
 function Login() {
   const [email, setEmail] = useState('')
@@ -88,6 +89,7 @@ export default function App() {
             <Route path="tableau" element={<Accueil />} />
             <Route path="saisie" element={<Saisie />} />
             <Route path="ticket" element={<Ticket />} />
+            <Route path="tickets" element={<Tickets />} />
             <Route path="courses" element={<Courses />} />
             <Route path="prix" element={<MeilleursPrix />} />
             <Route path="detail" element={<Detail />} />

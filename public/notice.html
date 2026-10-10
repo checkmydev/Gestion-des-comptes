@@ -238,9 +238,12 @@
           <p>L'application s'ouvre sur l'assistant. Touchez <span class="ui">📷 Ticket</span>, posez le ticket bien à plat et photographiez-le en entier.</p>
           <p>Une vingtaine de secondes plus tard, une fiche <strong>« Voici ce que j'ai lu »</strong> apparaît dans la conversation : le magasin, la date, chaque article avec son prix, et si le total correspond au ticket. Une ligne difficile à lire est surlignée en jaune avec ⚠.</p>
           <p><strong>Vérifiez avec le ticket</strong>, puis touchez <span class="ui">✓ Tout enregistrer</span>. Rien n'est enregistré avant. Une ligne fausse ? Touchez <span class="ui">✏️ Corriger une ligne</span>, ou enregistrez puis dites simplement à l'assistant « le beurre coûtait 2,29 € ».</p>
+          <p><strong>Ticket de station-service</strong> (Shell, Esso…) : la fiche montre le <strong>⛽ plein</strong> (litres, prix au litre, montant), à part des autres achats éventuels (café, lavage). Tapez le <strong>compteur kilométrique</strong> dans la case prévue : la consommation aux 100 km sera calculée. Le plein va dans l'onglet Essence du Global.</p>
+          <p><strong>Ticket photographié deux fois ?</strong> Si le même ticket (même jour, même magasin, même montant) est déjà enregistré, l'application le signale et demande avant de l'enregistrer une deuxième fois. Touchez « Annuler » pour ne pas le doubler.</p>
         </div>
         <figure class="phone"><img src="./notice/e1-ouverture.webp" alt="L'assistant à l'ouverture : boutons Ticket et Parler" loading="lazy" width="390" height="780" /><figcaption>L'écran d'ouverture</figcaption></figure>
         <figure class="phone"><img src="./notice/e2-ticket-fiche.webp" alt="Fiche du ticket lu dans la conversation : magasin, date, articles, total" loading="lazy" width="390" height="780" /><figcaption>Ce qui a été lu</figcaption></figure>
+        <figure class="phone"><img src="./notice/e6-ticket-essence.webp" alt="Ticket de station-service : plein d'essence avec la case du compteur kilométrique" loading="lazy" width="390" height="780" /><figcaption>Un ticket d'essence</figcaption></figure>
       </div>
 
       <div class="step duo">
@@ -478,8 +481,8 @@
       <div class="step">
         <div>
           <h3>Onglet « Essence »</h3>
-          <p>À chaque plein : <span class="ui">+ Ajouter un plein</span>, avec la station, le prix au litre, les <strong>kilomètres du compteur</strong> et le total payé.</p>
-          <p>L'application calcule les kilomètres parcourus depuis le plein précédent et la consommation (litres aux 100 km). Le total est repris automatiquement dans le Global.</p>
+          <p>Le plus simple : photographiez le ticket de la pompe (voir « L'essentiel »). À la main : <span class="ui">+ Ajouter un plein</span>, avec la station, les <strong>litres</strong>, les <strong>kilomètres du compteur</strong> et le total payé (le prix au litre est facultatif).</p>
+          <p>L'application calcule les kilomètres parcourus depuis le plein précédent et la <strong>consommation aux 100 km</strong> (colonne « l/100 km ») : il faut les litres et le compteur à chaque plein, réservoir rempli. Le total est repris automatiquement dans le Global.</p>
           <p>En dessous, les <strong>trajets extra</strong> (où, quand, km aller-retour) sont additionnés.</p>
         </div>
         <figure class="phone"><img src="./notice/13-global-essence.webp" alt="Pleins d'essence et trajets extra" loading="lazy" width="390" height="780" /></figure>
@@ -614,6 +617,17 @@
         <p>Roue dentée ⚙, puis <strong>Voix de l'assistant</strong>. Par défaut, l'assistant parle avec une <strong>voix naturelle</strong> fabriquée en ligne, chaleureuse et posée : choisissez celle qui vous plaît (voix de femme ou d'homme), chaque choix lit un exemple. Réglez aussi la vitesse : <span class="ui">Lente</span>, <span class="ui">Normale</span> ou <span class="ui">Rapide</span>.</p>
         <p>Sans internet, c'est la voix du téléphone qui prend le relais. Vous pouvez aussi la choisir vous-même (<span class="ui">Voix du téléphone</span>) : peu de voix dans la liste ? Sur Android, installez « Synthèse vocale Google » ; sur iPhone, téléchargez une voix française « améliorée » (Réglages → Accessibilité → Contenu énoncé → Voix).</p>
         <figure class="phone" style="margin-top: 12px"><img src="./notice/30-voix.webp" alt="Paramètres : choix de la voix et de la vitesse de lecture" loading="lazy" width="390" height="780" /></figure>
+      </details>
+      <details>
+        <summary>Revoir un ticket, ou supprimer un ticket enregistré deux fois.</summary>
+        <p>Touchez <span class="ui">🧾 Mes tickets</span> (en bas du Tableau de bord, ou en haut du Détail). Les tickets scannés y sont listés, du plus récent au plus ancien : touchez-en un pour voir ses achats. Un ticket identique à un autre (même jour, même magasin, même montant) est marqué d'un ⚠. <span class="ui">🗑 Supprimer tout ce ticket</span> retire tous ses achats d'un coup. La photo elle-même n'est pas conservée.</p>
+        <p>Vous pouvez aussi le demander à l'assistant : « <em>supprime le ticket Carrefour d'aujourd'hui, je l'ai enregistré deux fois</em> ».</p>
+        <figure class="phone" style="margin-top: 12px"><img src="./notice/31-mes-tickets.webp" alt="Mes tickets : liste des tickets scannés avec leurs achats" loading="lazy" width="390" height="780" /></figure>
+      </details>
+      <details>
+        <summary>Les statistiques tiennent compte d'anciens mois peu fiables.</summary>
+        <p>Roue dentée ⚙ → <strong>Objectifs</strong> → <span class="ui">Modifier</span> → <strong>Statistiques à partir de</strong> : choisissez le mois de départ. Les mois plus anciens restent consultables dans le Détail et le Global, mais ne comptent plus dans les moyennes, les tendances, l'inflation des prix, la liste de courses ni les suggestions de budget. L'assistant en tient compte aussi.</p>
+        <p>Au début, avec un seul mois, les moyennes restent vides : elles se remplissent au fil des mois.</p>
       </details>
       <details>
         <summary>Changer l'icône d'un article.</summary>

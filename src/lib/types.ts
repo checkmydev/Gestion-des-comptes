@@ -38,6 +38,9 @@ export interface Purchase {
   units: number | null
   amount: number
   note: string | null
+  /** Ticket scanné auquel appartient la ligne. */
+  ticket_id?: string | null
+  created_at?: string
 }
 
 export interface MonthRow {
@@ -90,6 +93,8 @@ export interface FuelFill {
   price_per_litre: number | null
   km: number | null
   total: number
+  /** Litres du plein (sinon déduits du prix au litre). */
+  litres?: number | null
 }
 
 export interface Trip {
@@ -109,6 +114,8 @@ export interface CategoryMonthTotal {
 export interface UserSettings {
   annual_budget: number
   emergency_target: number
+  /** Début des statistiques (AAAA-MM-01) ; les mois antérieurs ne comptent pas dans les moyennes. */
+  stats_from?: string | null
 }
 
 export interface PriceReference {

@@ -178,7 +178,10 @@ export default function Accueil() {
         <Link to="/saisie" className="btn">+ Encoder à la main</Link>
         <Link to="/courses" className="btn">🛒 Liste de courses</Link>
       </div>
-      <Link to="/prix" className="btn btn-block">🏷️ Où sont mes produits les moins chers ?</Link>
+      <div className="grid2">
+        <Link to="/tickets" className="btn">🧾 Mes tickets</Link>
+        <Link to="/prix" className="btn">🏷️ Meilleurs prix</Link>
+      </div>
     </div>
   )
 }

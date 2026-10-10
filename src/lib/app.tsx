@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { DEFAULT_SETTINGS, insertRow, loadRefs } from './api'
+import { setStatsFrom } from './budget'
 import { currentPeriod } from './period'
 import { supabase } from './supabase'
 import type { Category, Item, Store, UserSettings } from './types'
@@ -77,7 +78,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSettings({
         annual_budget: Number(r.settings.annual_budget),
         emergency_target: Number(r.settings.emergency_target),
+        stats_from: r.settings.stats_from ?? null,
       })
+      setStatsFrom(r.settings.stats_from ?? null)
       setError(null)
     } catch (e) {
       setError((e as Error).message)
