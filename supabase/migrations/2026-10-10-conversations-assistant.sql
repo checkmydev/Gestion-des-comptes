@@ -42,3 +42,6 @@ create policy "propriétaire" on comptes.assistant_usage for all to authenticate
   using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 grant select, insert, update, delete on comptes.assistant_usage to authenticated, service_role;
 grant usage, select on all sequences in schema comptes to authenticated, service_role;
+
+-- Modèle utilisé pour chaque requête (Sonnet pour le courant, Opus pour les recherches de prix).
+alter table comptes.assistant_usage add column if not exists modele text;

@@ -11,11 +11,21 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.133.0'
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.117.3'
 
-const MODEL = 'claude-opus-5-5'
+/** Modèle courant (questions, encodage, corrections, résumés) : bon et deux fois moins cher qu'Opus. */
+const MODEL = 'claude-sonnet-5-5'
+/** Modèle des recherches de prix sur internet : comparer des produits et des formats demande plus de finesse. */
+const MODEL_PRICES = 'claude-opus-5-5'
+/** Une question qui demande de chercher des prix (où acheter, moins cher, promotions…). */
+const PRICE_QUESTION = /(prix|moins cher|plus cher|bon march|meilleur (magasin|endroit|prix)|o[uù] (acheter|trouver)|promo|d[ée]pliant|r[ée]duction|comparer? les magasins)/i
 const MAX_STEPS = 10 // garde-fou de la boucle d'agent
 
-// Coût : tarifs du modèle en dollars par million de jetons (à revoir si Anthropic les change).
-const PRICE_USD = { input: 5, output: 25, cache_read: 0.5, cache_write: 6.25, web_search: 0.01 }
+// Coût : tarifs Anthropic en dollars par million de jetons (à revoir s'ils changent) ;
+// écriture du cache = 1,25 × l'entrée ; recherche web ≈ 0,01 $ chacune.
+const TARIFS: Record<string, { input: number; output: number; cache_read: number; cache_write: number }> = {
+  'claude-opus-5-5': { input: 4, output: 20, cache_read: 0.2, cache_write: 5 },
+  'claude-sonnet-5-5': { input: 2, output: 10, cache_read: 0.2, cache_write: 2.5 },
+}
+const WEB_SEARCH_USD = 0.01
 const USD_EUR = 0.92
 /** Plafond par requête : au-delà, l'historique est compacté et la recherche s'arrête. */
 const MAX_COST_EUR = 1
@@ -27,16 +37,20 @@ const KEEP_RECENT = 4
 
 const BUDGET_NOTE = "[Note de l'application] Le plafond de coût de cette question est presque atteint : ne lance plus de recherche ni d'outil. Réponds maintenant avec ce que tu as déjà trouvé, et dis brièvement à l'utilisateur que la recherche a été écourtée pour limiter les frais (il peut reposer une question plus précise)."
 
-type Usage = { input: number; output: number; cache_read: number; cache_write: number; web_searches: number }
-const costEur = (u: Usage) => USD_EUR * (
-  (u.input * PRICE_USD.input + u.output * PRICE_USD.output + u.cache_read * PRICE_USD.cache_read + u.cache_write * PRICE_USD.cache_write) / 1e6
-  + u.web_searches * PRICE_USD.web_search)
-const addUsage = (u: Usage, r: Anthropic.Beta.BetaUsage) => {
+type Usage = { input: number; output: number; cache_read: number; cache_write: number; web_searches: number; usd: number }
+const costEur = (u: Usage) => USD_EUR * u.usd
+/** Additionne la consommation d'un appel, au tarif du modèle qui a répondu (il peut différer en cas de repli). */
+const addUsage = (u: Usage, r: Anthropic.Beta.BetaUsage, model: string) => {
+  const t = TARIFS[model] ?? TARIFS[MODEL_PRICES]
+  const read = r.cache_read_input_tokens ?? 0
+  const write = r.cache_creation_input_tokens ?? 0
+  const searches = r.server_tool_use?.web_search_requests ?? 0
   u.input += r.input_tokens
   u.output += r.output_tokens
-  u.cache_read += r.cache_read_input_tokens ?? 0
-  u.cache_write += r.cache_creation_input_tokens ?? 0
-  u.web_searches += r.server_tool_use?.web_search_requests ?? 0
+  u.cache_read += read
+  u.cache_write += write
+  u.web_searches += searches
+  u.usd += (r.input_tokens * t.input + r.output_tokens * t.output + read * t.cache_read + write * t.cache_write) / 1e6 + searches * WEB_SEARCH_USD
 }
 
 type Turn = { role: 'user' | 'assistant'; content: string }
@@ -60,7 +74,7 @@ async function summarize(client: Anthropic, previous: string | null, turns: Turn
     system: "Tu résumes une conversation entre un retraité et l'assistant de son application de comptes, pour que l'assistant puisse la poursuivre. Écris en français, en 15 lignes maximum. Garde : les questions posées, les chiffres et dates donnés, les achats ou lignes ajoutés ou annulés (avec montants et dates), les prix trouvés et magasins, les demandes encore en suspens, les préférences exprimées. Pas de formules de politesse.",
     messages: [{ role: 'user', content: `${previous ? `Résumé déjà établi :\n${previous}\n\nSuite de la conversation :\n` : ''}${transcript}` }],
   })
-  addUsage(usage, response.usage)
+  addUsage(usage, response.usage, response.model)
   return response.content.filter((b) => b.type === 'text').map((b) => (b as Anthropic.Beta.BetaTextBlock).text).join('').trim()
 }
 
@@ -97,6 +111,8 @@ Règles :
 - Une dépense annuelle (assurance, taxe, eau, hospitalisation…) se note avec payer_depense_annuelle, pas comme un achat.
 - L'utilisateur fait l'essentiel par la photo de ses tickets et en te parlant. Un ticket photographié apparaît dans la conversation (« Ticket de caisse lu… ») : s'il est marqué PAS ENCORE ENREGISTRÉ, c'est le bouton « Tout enregistrer » sous la fiche qui l'enregistre ; ne l'encode jamais toi-même avec ajouter_achats (risque de doublon). Si l'utilisateur veut corriger une ligne avant d'enregistrer, propose-lui d'enregistrer d'abord puis de te dire la correction, ou de toucher « Corriger une ligne ». Une fois enregistré, corrige avec modifier_achat ou supprimer_achats (retrouve les lignes avec chercher_achats, tri = "saisie").
 - Tu peux tout gérer dans ses comptes : pour les lignes du mois (pension, loyer…), pleins, trajets, postes et paiements annuels, épargne, retrouve d'abord la ligne avec lister_lignes, puis modifier_ligne ou supprimer_lignes ; budgets et catégories avec modifier_categorie ; articles (nom, catégorie, icône) avec modifier_article ; plafond annuel et réserve avec modifier_objectifs ; solde de début de mois avec fixer_solde_mois. Dis toujours exactement ce qui a changé, et qu'il peut dire « annule ».
+- L'historique ne contient que le texte des échanges précédents, pas les outils utilisés : ce que tu as annoncé comme fait (« C'est fait », « J'ai enregistré… ») a bien été fait ; ne te contredis pas, et vérifie avec les outils en cas de doute.
+- Les conversations sont gardées et rangées en groupes. Quand l'utilisateur demande d'effacer une conversation (« supprime cette conversation », « efface tout l'historique »), d'en commencer une nouvelle, d'en reprendre une ancienne ou de la ranger dans un groupe, utilise gerer_conversation (et lister_conversations pour retrouver la bonne). Effacer demande toujours une confirmation.
 - Pour corriger un achat déjà encodé (montant, date, magasin, quantité, article), utilise modifier_achat directement quand la demande est claire, puis dis exactement ce qui a changé ; il peut dire « annule ».
 - Tu peux supprimer des achats (supprimer_achats), même encodés par l'utilisateur, et des articles du catalogue (supprimer_article), mais seulement à sa demande. Retrouve d'abord les lignes exactes (chercher_achats ; pour « ce que je viens d'ajouter », tri = "saisie"), montre-les clairement (article, montant, date, magasin) et demande « Je supprime bien ceci ? ». Ne rappelle avec confirme = true qu'après un oui explicite. Une phrase comme « supprime-le » après avoir vu les lignes vaut accord si elle désigne sans ambiguïté ce que tu as montré. Après suppression, récapitule et rappelle qu'il peut dire « annule » pour tout remettre.
 - Quand l'utilisateur fait une remarque sur ses données (« il manque… », « ce montant est faux… »), vérifie toujours avec les outils avant de répondre, et explique ce que tu as trouvé.
@@ -242,6 +258,27 @@ const TOOLS: Anthropic.Beta.BetaToolUnion[] = [
         confirme: { type: 'boolean', description: "true uniquement après l'accord explicite de l'utilisateur" },
       },
       required: ['numeros'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'lister_conversations',
+    description: "Liste les conversations gardées avec l'assistant (numéro, titre, groupe, date, nombre de messages), la conversation en cours étant signalée. Pour en rouvrir, supprimer ou ranger une.",
+    input_schema: { type: 'object', properties: { groupe: { type: 'string' } }, additionalProperties: false },
+  },
+  {
+    name: 'gerer_conversation',
+    description: "Agit sur les conversations à la demande de l'utilisateur (à l'écrit ou à la voix) : « nouvelle » commence une nouvelle conversation (dans un groupe si précisé) ; « ouvrir » revient à une conversation existante (numero de lister_conversations) ; « ranger » met une conversation (par défaut celle en cours) dans un groupe (créé s'il n'existe pas) ; « supprimer » efface une conversation (par défaut celle en cours) ou toutes (toutes = true) — en deux temps : sans confirme, l'outil décrit ce qui sera effacé ; rappelle avec confirme = true après un oui explicite. Les comptes ne sont jamais touchés.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['nouvelle', 'ouvrir', 'ranger', 'supprimer'] },
+        numero: { type: 'integer', description: 'conversation visée (lister_conversations) ; absent = conversation en cours' },
+        groupe: { type: 'string' },
+        toutes: { type: 'boolean' },
+        confirme: { type: 'boolean' },
+      },
+      required: ['action'],
       additionalProperties: false,
     },
   },
@@ -552,6 +589,50 @@ async function ensureMonth(db: Db, period: string): Promise<void> {
 async function loadMemory(db: Db): Promise<{ id: number; note: string }[]> {
   const { data } = await db.from('assistant_memory').select('id, note').order('created_at').limit(50)
   return (data ?? []) as { id: number; note: string }[]
+}
+
+/** Conversations avec l'assistant : lister, ouvrir, nouvelle, ranger, supprimer. */
+async function conversationTool(db: Db, name: string, input: Input, current: number | null): Promise<{ out: unknown; nav?: Record<string, unknown> }> {
+  const rows = await must(db.from('assistant_conversations').select('id, titre, groupe, updated_at, messages').order('updated_at', { ascending: false }).limit(100)) as Record<string, any>[]
+  const describe = (r: Record<string, any>) => ({
+    numero: r.id, titre: r.titre || 'sans titre', groupe: r.groupe ?? 'Sans groupe',
+    derniere_activite: new Date(r.updated_at).toLocaleString('fr-BE', { timeZone: 'Europe/Brussels', dateStyle: 'short', timeStyle: 'short' }),
+    messages: Array.isArray(r.messages) ? r.messages.length : 0, en_cours: r.id === current,
+  })
+  if (name === 'lister_conversations') {
+    const g = str(input.groupe)
+    return { out: (g ? rows.filter((r) => norm(r.groupe ?? '').includes(norm(g))) : rows).map(describe) }
+  }
+  const action = String(input.action)
+  const target = Number.isInteger(input.numero) ? rows.find((r) => r.id === Number(input.numero)) : rows.find((r) => r.id === current)
+  if (action === 'nouvelle') {
+    return { out: { fait: true, message: "L'application ouvre une nouvelle conversation après ta réponse : dis-le en une phrase." }, nav: { type: 'nouvelle', groupe: str(input.groupe) ?? null } }
+  }
+  if (action === 'ouvrir') {
+    if (!target) return { out: { message: 'Conversation introuvable : utilise lister_conversations.' } }
+    return { out: { fait: true, ouverte: describe(target), message: "L'application affiche cette conversation après ta réponse : annonce-le en une phrase." }, nav: { type: 'ouvrir', id: target.id } }
+  }
+  if (action === 'ranger') {
+    const g = str(input.groupe)
+    if (!g) return { out: { message: 'Indique le nom du groupe.' } }
+    if (!target) return { out: { message: "Aucune conversation en cours : elle n'est pas encore enregistrée." } }
+    const existing = [...new Set(rows.map((r) => r.groupe).filter(Boolean))] as string[]
+    const name2 = existing.find((x) => norm(x) === norm(g)) ?? g.charAt(0).toUpperCase() + g.slice(1)
+    await must(db.from('assistant_conversations').update({ groupe: name2 }).eq('id', target.id))
+    return { out: { fait: true, conversation: target.titre, groupe: name2, nouveau_groupe: !existing.some((x) => norm(x) === norm(g)) }, nav: { type: 'rangee', id: target.id, groupe: name2 } }
+  }
+  if (action === 'supprimer') {
+    const victims = input.toutes === true ? rows : target ? [target] : []
+    if (!victims.length) return { out: { message: 'Aucune conversation à supprimer.' } }
+    if (input.confirme !== true) {
+      return { out: { a_confirmer: victims.map(describe), consigne: "Rien n'est encore effacé. Dis clairement ce qui sera effacé (les comptes ne sont pas touchés) et demande confirmation ; rappelle avec confirme = true après un oui." } }
+    }
+    const ids = victims.map((r) => r.id)
+    await must(db.from('assistant_usage').delete().in('conversation_id', ids))
+    await must(db.from('assistant_conversations').delete().in('id', ids))
+    return { out: { fait: true, effacees: victims.length, message: 'Effacé. Confirme en une phrase ; une nouvelle conversation commence.' }, nav: { type: 'supprimees', ids } }
+  }
+  return { out: { message: 'Action inconnue.' } }
 }
 
 /** Données « autres que les achats » que l'assistant peut lister, corriger et supprimer. */
@@ -1200,9 +1281,14 @@ Deno.serve(async (req: Request) => {
 
   const apiKey = (Deno.env.get('COMPTES_ANTHROPIC_API_KEY') ?? '').trim()
   if (!apiKey) return json({ error: "L'assistant n'est pas encore configuré (clé manquante)." }, 503)
-  const client = new Anthropic({ apiKey })
-  const usage: Usage = { input: 0, output: 0, cache_read: 0, cache_write: 0, web_searches: 0 }
+  // Clé non rattachée à un workspace : l'identifiant du workspace doit accompagner chaque appel.
+  const workspace = (Deno.env.get('COMPTES_ANTHROPIC_WORKSPACE_ID') ?? '').trim()
+  const client = new Anthropic({ apiKey, ...(workspace ? { defaultHeaders: { 'anthropic-workspace-id': workspace } } : {}) })
+  const usage: Usage = { input: 0, output: 0, cache_read: 0, cache_write: 0, web_searches: 0, usd: 0 }
   const question = history[history.length - 1].content
+  // Opus pour une recherche de prix (y compris « oui » juste après qu'il l'a proposée), Sonnet sinon
+  const previous = history.length > 1 ? history[history.length - 2].content : ''
+  const model = PRICE_QUESTION.test(question) || (/^\s*(oui|ok|d'accord|vas-y|volontiers)\b/i.test(question) && /cherche|recherche|prix|magasins?/i.test(previous)) ? MODEL_PRICES : MODEL
 
   // Compactage : historique long, ou dernière requête de cette conversation au-delà du plafond.
   let compacted: { resume: string; couverts: number } | null = null
@@ -1244,6 +1330,8 @@ Deno.serve(async (req: Request) => {
   let budgetReached = false
   let modified = false
   let awaitingValidation = false
+  /** Action demandée à l'application sur les conversations (ouvrir, nouvelle, supprimée…). */
+  let navigation: Record<string, unknown> | null = null
 
   /** Journal du coût de la requête (suivi, et déclenchement du compactage la fois suivante). */
   const record = async () => {
@@ -1252,13 +1340,13 @@ Deno.serve(async (req: Request) => {
         conversation_id: conversationId, question: question.slice(0, 500),
         input_tokens: usage.input, output_tokens: usage.output, cache_read: usage.cache_read, cache_write: usage.cache_write,
         web_searches: usage.web_searches, cout_eur: Math.round(costEur(usage) * 10000) / 10000,
-        compacte: Boolean(compacted), budget_atteint: budgetReached,
+        compacte: Boolean(compacted), budget_atteint: budgetReached, modele: model,
       })
     } catch { /* suivi non bloquant */ }
   }
   const finish = async (payload: Record<string, unknown>) => {
     await record()
-    return json({ ...payload, compacted, modifie: modified, a_valider: awaitingValidation, cout_eur: Math.round(costEur(usage) * 100) / 100 })
+    return json({ ...payload, compacted, modifie: modified, a_valider: awaitingValidation, navigation, cout_eur: Math.round(costEur(usage) * 100) / 100 })
   }
 
   try {
@@ -1266,7 +1354,7 @@ Deno.serve(async (req: Request) => {
       // Plafond de coût : à l'approche d'1 €, plus de recherche, il répond avec ce qu'il a.
       const lastCall = budgetReached
       const response = await client.beta.messages.create({
-        model: MODEL,
+        model: model,
         max_tokens: 16000,
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',
@@ -1279,7 +1367,7 @@ Deno.serve(async (req: Request) => {
         ...(lastCall ? { tool_choice: { type: 'none' as const } } : {}),
         messages,
       })
-      addUsage(usage, response.usage)
+      addUsage(usage, response.usage, response.model)
       if (!budgetReached && costEur(usage) > MAX_COST_EUR * 0.8) budgetReached = true
 
       // Sources : citations de la réponse et pages effectivement lues
@@ -1308,6 +1396,12 @@ Deno.serve(async (req: Request) => {
           if (block.type !== 'tool_use') continue
           try {
             const input = (block.input ?? {}) as Input
+            if (block.name === 'lister_conversations' || block.name === 'gerer_conversation') {
+              const r = await conversationTool(db, block.name, input, conversationId)
+              if (r.nav) navigation = r.nav
+              results.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(r.out) })
+              continue
+            }
             // Demande dictée : rien n'est écrit avant que l'utilisateur ait validé le résumé.
             if (voice && VALIDATED_TOOLS.has(block.name) && input.confirme !== true) {
               awaitingValidation = true
@@ -1342,7 +1436,11 @@ Deno.serve(async (req: Request) => {
     await record()
     if (e instanceof Anthropic.RateLimitError) return json({ error: "L'assistant est très sollicité, réessayez dans un instant." }, 429)
     if (e instanceof Anthropic.AuthenticationError) return json({ error: "La clé de l'assistant n'est pas valide." }, 500)
-    if (e instanceof Anthropic.APIError) return json({ error: `Erreur de l'assistant (${e.status}).` }, 502)
+    // Clé non rattachée à un workspace et identifiant de workspace absent
+    if (e instanceof Anthropic.APIError && /workspace/i.test(String(e.message))) return json({ error: "La clé de l'assistant n'est liée à aucun espace de travail Anthropic : il faut indiquer l'identifiant du workspace (secret COMPTES_ANTHROPIC_WORKSPACE_ID) ou utiliser une clé créée dans un workspace." }, 500)
+    // Crédit Anthropic épuisé : message clair plutôt qu'une « erreur 400 »
+    if (e instanceof Anthropic.APIError && /credit balance/i.test(String(e.message))) return json({ error: "Le crédit de l'assistant est épuisé. Il faut le recharger (console Anthropic → Plans & Billing) ; en attendant, vous pouvez encoder à la main." }, 402)
+    if (e instanceof Anthropic.APIError) { console.error('API', e.status, e.message); return json({ error: `Erreur de l'assistant (${e.status}).` }, 502) }
     return json({ error: (e as Error).message }, 500)
   }
 })

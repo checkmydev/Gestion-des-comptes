@@ -228,6 +228,7 @@ create table assistant_conversations (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   titre      text not null default '',
+  groupe     text,                                 -- groupe de conversations (Tickets, Questions…)
   messages   jsonb not null default '[]'::jsonb,  -- [{ role, content, sources? }]
   resume       text,                         -- résumé des anciens messages (compactage)
   resume_count int not null default 0         -- nombre de messages couverts par le résumé
@@ -248,7 +249,8 @@ create table assistant_usage (
   web_searches    int not null default 0,
   cout_eur        numeric(8,4) not null default 0,
   compacte        boolean not null default false,
-  budget_atteint  boolean not null default false
+  budget_atteint  boolean not null default false,
+  modele          text                       -- modèle utilisé (Sonnet / Opus)
 );
 
 -- ---------------------------------------------------------------------------

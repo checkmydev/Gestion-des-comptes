@@ -10,7 +10,7 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.133.0'
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3'
 
-const MODEL = 'claude-opus-5-5'
+const MODEL = 'claude-sonnet-5-5' // lecture fiable des tickets, deux fois moins chère qu'Opus
 const MAX_IMAGE_BYTES = 4_500_000 // la photo est réduite côté application (≈ 300-800 Ko)
 
 const CORS = {
@@ -109,7 +109,9 @@ Deno.serve(async (req: Request) => {
     },
   }
 
-  const client = new Anthropic({ apiKey })
+  // Clé non rattachée à un workspace : l'identifiant du workspace doit accompagner chaque appel.
+  const workspace = (Deno.env.get('COMPTES_ANTHROPIC_WORKSPACE_ID') ?? '').trim()
+  const client = new Anthropic({ apiKey, ...(workspace ? { defaultHeaders: { 'anthropic-workspace-id': workspace } } : {}) })
   try {
     const response = await client.beta.messages.create({
       model: MODEL,
@@ -136,6 +138,11 @@ Deno.serve(async (req: Request) => {
   } catch (e) {
     if (e instanceof SyntaxError) return json({ error: "La lecture du ticket n'a pas abouti. Réessayez avec une photo plus nette." }, 502)
     if (e instanceof Anthropic.RateLimitError) return json({ error: 'Service très sollicité, réessayez dans un instant.' }, 429)
+    // Clé non rattachée à un workspace et identifiant de workspace absent
+    if (e instanceof Anthropic.APIError && /workspace/i.test(String(e.message))) return json({ error: "La clé de l'assistant n'est liée à aucun espace de travail Anthropic : il faut indiquer l'identifiant du workspace (secret COMPTES_ANTHROPIC_WORKSPACE_ID) ou utiliser une clé créée dans un workspace." }, 500)
+    // Crédit Anthropic épuisé : message clair plutôt qu'une « erreur 400 »
+    if (e instanceof Anthropic.APIError && /credit balance/i.test(String(e.message))) return json({ error: "Le crédit de l'assistant est épuisé. Il faut le recharger (console Anthropic → Plans & Billing) ; en attendant, vous pouvez encoder à la main." }, 402)
+    if (e instanceof Anthropic.AuthenticationError) return json({ error: "La clé de l'assistant n'est pas valide : il faut la remplacer." }, 500)
     if (e instanceof Anthropic.APIError) return json({ error: `Erreur du service de lecture (${e.status}).` }, 502)
     return json({ error: (e as Error).message }, 500)
   }

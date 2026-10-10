@@ -20,8 +20,20 @@ export interface ChatMessage {
   image?: string
 }
 
-export interface ConversationRow { id: number; titre: string; updated_at: string; messages: ChatMessage[]; resume: string | null; resume_count: number }
-export const CONVERSATION_FIELDS = 'id, titre, updated_at, messages, resume, resume_count'
+export interface ConversationRow { id: number; titre: string; groupe: string | null; updated_at: string; messages: ChatMessage[]; resume: string | null; resume_count: number }
+export const CONVERSATION_FIELDS = 'id, titre, groupe, updated_at, messages, resume, resume_count'
+
+/** Groupes proposés d'office (l'utilisateur peut en créer d'autres). */
+export const DEFAULT_GROUPS = ['Tickets', 'Encodage', 'Questions', 'Prix et courses']
+
+/** Groupe d'une nouvelle conversation, deviné d'après son premier message. */
+export function guessGroup(list: ChatMessage[]): string {
+  const first = list.find((m) => m.role === 'user')?.content ?? ''
+  if (list.some((m) => m.ticket) || first.startsWith('📷')) return 'Tickets'
+  if (/prix|moins cher|magasin|promo|d[ée]pliant|o[uù] acheter/i.test(first)) return 'Prix et courses'
+  if (/j'ai (pay[ée]|achet[ée]|d[ée]pens[ée])|ajoute|enregistre|corrige|supprime|annule|modifie|remplace|mets? /i.test(first)) return 'Encodage'
+  return 'Questions'
+}
 
 /** Ce qui est gardé en base : pas les erreurs de connexion, pas les miniatures de photo. */
 export const toStore = (list: ChatMessage[]) => list.filter((m) => !m.error).map(({ role, content, sources, ticket, voice, validate }) => ({

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../lib/app'
-import { CONVERSATION_FIELDS, titleOf, toStore, type ChatMessage, type ConversationRow } from '../lib/chat'
+import { CONVERSATION_FIELDS, DEFAULT_GROUPS, guessGroup, titleOf, toStore, type ChatMessage, type ConversationRow } from '../lib/chat'
 import { eur, longDate } from '../lib/format'
 import { productIcon } from '../lib/icons'
 import { periodLabel } from '../lib/period'
@@ -200,6 +200,8 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
   /** Résumé des anciens messages (compactage fait par le serveur) et nombre de messages qu'il couvre. */
   const [summary, setSummary] = useState<{ resume: string | null; count: number }>({ resume: null, count: 0 })
   const [syncedAt, setSyncedAt] = useState<string | null>(null)
+  /** Groupe de la conversation en cours (ou choisi pour la prochaine nouvelle conversation). */
+  const [group, setGroup] = useState<string | null>(null)
   const [past, setPast] = useState<ConversationRow[] | null>(null)
   const [showPast, setShowPast] = useState(false)
   const [saveError, setSaveError] = useState(false)
@@ -231,6 +233,7 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
   }, [messages, busy, conversationId, showPast, dictation.interim])
 
   function show(row: ConversationRow) {
+    setGroup(row.groupe)
     setConversationId(row.id)
     setMessages(row.messages ?? [])
     setSummary({ resume: row.resume, count: row.resume_count ?? 0 })
@@ -276,7 +279,8 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
     const row = { titre: titleOf(list), messages: toStore(list), resume: sum.resume, resume_count: sum.count, updated_at: new Date().toISOString() }
     const res = id
       ? await supabase.from('assistant_conversations').update(row).eq('id', id).select('id, updated_at').single()
-      : await supabase.from('assistant_conversations').insert(row).select('id, updated_at').single()
+      : await supabase.from('assistant_conversations').insert({ ...row, groupe: group ?? guessGroup(list) }).select('id, updated_at, groupe').single()
+    if (!id && res.data) setGroup((res.data as unknown as { groupe: string | null }).groupe)
     if (res.error || !res.data) { setSaveError(true); return id }
     setSaveError(false)
     setSyncedAt(res.data.updated_at as string)
@@ -320,6 +324,18 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
     if (c.id === conversationId) startNew()
   }
 
+  async function moveTo(c: ConversationRow, target: string) {
+    let name = target
+    if (target === '__nouveau__') {
+      name = (prompt('Nom du nouveau groupe (par exemple « Santé », « Voiture ») :') ?? '').trim()
+      if (!name) return
+    }
+    const { error } = await supabase.from('assistant_conversations').update({ groupe: name }).eq('id', c.id)
+    if (error) { alert("La conversation n'a pas pu être déplacée. Vérifiez la connexion internet."); return }
+    setPast((p) => p?.map((x) => (x.id === c.id ? { ...x, groupe: name } : x)) ?? null)
+    if (c.id === conversationId) setGroup(name)
+  }
+
   async function removeAll() {
     if (!confirm('Effacer toutes les conversations avec l\'assistant ? Vos comptes ne sont pas touchés.')) return
     const { error } = await supabase.from('assistant_conversations').delete().gt('id', 0)
@@ -328,7 +344,8 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
     startNew()
   }
 
-  function startNew() {
+  function startNew(inGroup: string | null = null) {
+    setGroup(inGroup)
     startedNewRef.current = true
     stopSpeaking(); setSpeaking(null)
     setConversationId(null)
@@ -377,12 +394,25 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
       const compacted = data?.compacted as { resume: string; couverts: number } | null
       if (compacted) sum = { resume: compacted.resume, count: sum.count + compacted.couverts }
       const final: ChatMessage[] = [...next, { role: 'assistant', content: reply, sources: data?.sources ?? [], ...(data?.a_valider ? { validate: true } : {}) }]
+      const nav = data?.navigation as { type: string; id?: number; ids?: number[]; groupe?: string | null } | null
+      const deletedCurrent = nav?.type === 'supprimees' && id != null && (nav.ids ?? []).includes(id)
       setMessages(final)
       setSummary(sum)
-      await persist(final, id, sum)
+      if (!deletedCurrent) await persist(final, id, sum)
       if (data?.modifie) dataChanged() // l'écran affiché derrière se recharge
       void reload() // l'assistant a pu créer des articles ou des magasins
-      if (voice) { setSpeaking(final.length - 1); speak(reply, () => setSpeaking(null)) }
+      // Conversations : nouvelle, reprise, rangée, effacée (demandé à l'assistant)
+      if (nav?.type === 'nouvelle') startNew(nav.groupe ?? null)
+      else if (nav?.type === 'ouvrir' && nav.id) {
+        const { data: row } = await supabase.from('assistant_conversations').select(CONVERSATION_FIELDS).eq('id', nav.id).maybeSingle()
+        if (row) { startedNewRef.current = false; show(row as ConversationRow) }
+      } else if (nav?.type === 'rangee' && nav.id === id) setGroup(nav.groupe ?? null)
+      else if (deletedCurrent) {
+        // La conversation n'existe plus : on repart d'une page blanche, avec la confirmation de l'assistant
+        startNew(group)
+        setMessages([{ role: 'assistant', content: reply }])
+      }
+      if (voice) { setSpeaking(nav ? null : final.length - 1); speak(reply, () => setSpeaking(null)) }
     } catch (e) {
       setMessages((m) => [...m, { role: 'assistant', content: (e as Error).message, error: true }])
     } finally {
@@ -462,23 +492,44 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
           <h1>Conversations</h1>
           <button className="btn-ghost" onClick={() => setShowPast(false)}>Retour</button>
         </div>
-        <button className="btn-primary btn-big btn-block" onClick={startNew}>+ Nouvelle conversation</button>
+        <button className="btn-primary btn-big btn-block" onClick={() => startNew()}>+ Nouvelle conversation</button>
         {past === null && <p className="muted">Chargement…</p>}
         {past?.length === 0 && <p className="muted">Aucune conversation enregistrée.</p>}
-        {past && past.length > 0 && (
-          <div className="list">
-            {past.map((c) => (
-              <div key={c.id} className="row" style={{ flexWrap: 'nowrap', gap: 4 }}>
-                <button className="btn-ghost grow" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: 0, color: 'var(--ink)', textAlign: 'left' }}
-                  onClick={() => resumeConversation(c)}>
-                  <span style={{ fontWeight: c.id === conversationId ? 700 : 400 }}>{c.titre || 'Sans titre'}</span>
-                  <span className="muted small">{shortDate(c.updated_at)} · {c.messages?.length ?? 0} message{(c.messages?.length ?? 0) > 1 ? 's' : ''}{c.id === conversationId ? ' · en cours' : ''}</span>
-                </button>
-                <button className="btn-ghost btn-danger" aria-label={`Supprimer la conversation « ${c.titre} »`} onClick={() => remove(c)}>🗑</button>
-              </div>
-            ))}
-          </div>
-        )}
+        {past && past.length > 0 && (() => {
+          // Groupes : du plus récemment utilisé au plus ancien
+          const names: string[] = []
+          for (const c of past) { const g = c.groupe ?? 'Sans groupe'; if (!names.includes(g)) names.push(g) }
+          const allNames = [...names, ...DEFAULT_GROUPS.filter((g) => !names.includes(g))]
+          return names.map((g) => {
+            const list = past.filter((c) => (c.groupe ?? 'Sans groupe') === g)
+            return (
+              <section key={g} className="conv-group">
+                <div className="spread conv-group-head">
+                  <h2>📁 {g} <span className="muted small">({list.length})</span></h2>
+                  <button className="btn-ghost small" onClick={() => startNew(g === 'Sans groupe' ? null : g)}>+ Nouvelle ici</button>
+                </div>
+                <div className="list">
+                  {list.map((c) => (
+                    <div key={c.id} className="conv-item">
+                      <button className="btn-ghost conv-open" onClick={() => resumeConversation(c)}>
+                        <span style={{ fontWeight: c.id === conversationId ? 700 : 400 }}>{c.titre || 'Sans titre'}</span>
+                        <span className="muted small">{shortDate(c.updated_at)} · {c.messages?.length ?? 0} message{(c.messages?.length ?? 0) > 1 ? 's' : ''}{c.id === conversationId ? ' · en cours' : ''}</span>
+                      </button>
+                      <div className="row conv-actions">
+                        <select aria-label={`Déplacer « ${c.titre} » dans un autre groupe`} value="" onChange={(e) => { if (e.target.value) void moveTo(c, e.target.value) }}>
+                          <option value="">📁 Déplacer…</option>
+                          {allNames.filter((n) => n !== g && n !== 'Sans groupe').map((n) => <option key={n} value={n}>{n}</option>)}
+                          <option value="__nouveau__">+ Nouveau groupe…</option>
+                        </select>
+                        <button className="btn-ghost btn-danger" aria-label={`Supprimer la conversation « ${c.titre} »`} onClick={() => remove(c)}>🗑</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )
+          })
+        })()}
         <p className="muted small">Les conversations sont gardées sur votre compte : vous les retrouvez sur tous vos appareils. Elles ne s'effacent pas toutes seules : supprimez-les ici quand vous le souhaitez.</p>
         {past && past.length > 0 && (
           <button className="btn btn-danger" onClick={() => void removeAll()}>🗑 Effacer toutes les conversations</button>
@@ -496,8 +547,8 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
         {panel && <button className="btn-ghost chat-close" onClick={onClose} aria-label="Fermer l'assistant">✕ Fermer</button>}
       </div>
       <div className="row chat-tools">
-        <button className="btn-ghost small" onClick={() => void openPast()}>🕘 Conversations</button>
-        {messages.length > 0 && <button className="btn-ghost small" onClick={startNew}>+ Nouvelle</button>}
+        <button className="btn-ghost small" onClick={() => void openPast()}>🕘 Conversations{group ? <> · 📁 {group}</> : null}</button>
+        {messages.length > 0 && <button className="btn-ghost small" onClick={() => startNew()}>+ Nouvelle</button>}
       </div>
       {panel && screen && <p className="muted small chat-context">Vous regardez : {screen.split(' (')[0]} · <span className="capitalize">{periodLabel(period)}</span></p>}
       {saveError && <p className="alert small" style={{ margin: 0 }}>La conversation n'a pas pu être sauvegardée (connexion ?). Elle reste sur cet appareil.</p>}
