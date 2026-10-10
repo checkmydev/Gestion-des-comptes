@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Loading } from '../components/Layout'
 import { deleteRow, insertRow, must, saveRow } from '../lib/api'
 import { useApp } from '../lib/app'
@@ -34,6 +35,16 @@ export function FuelTab({ openForm }: TabProps) {
     return { fills: must(fills) as FuelFill[], trips: must(trips) as Trip[] }
   }, [period])
   const { data, error, refresh } = useLoader(load)
+
+  // « ⛽ Plein d'essence » depuis la saisie : le formulaire s'ouvre directement
+  const [params, setParams] = useSearchParams()
+  useEffect(() => {
+    if (!data || params.get('nouveau') !== '1') return
+    params.delete('nouveau')
+    setParams(params, { replace: true })
+    editFill()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data])
 
   if (error) return <p className="error">{error}</p>
   if (!data) return <Loading />

@@ -90,6 +90,11 @@ export default function Saisie() {
                 <span className="sub">{items.filter((i) => i.category_id === c.id).length} articles</span>
               </button>
             ))}
+            {/* L'essence n'est pas un achat : elle va dans Global → Essence */}
+            <Link to="/global?tab=essence&nouveau=1" className="tile" style={{ textDecoration: 'none', color: 'inherit' }}>
+              <span className="tile-icon" aria-hidden="true">⛽</span>Plein d'essence
+              <span className="sub">station, litres, compteur</span>
+            </Link>
           </div>
         </section>
       )}

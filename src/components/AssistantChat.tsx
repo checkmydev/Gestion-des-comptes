@@ -15,6 +15,8 @@ import { checkOnlineVoice, dictationSupported, speak, stopSpeaking, unlockAudio,
 /** Copie locale de la conversation en cours (affichage immédiat, et secours hors connexion). */
 const STORAGE_KEY = 'comptes.assistant.conversation'
 const CURRENT_KEY = 'comptes.assistant.current'
+/** Après ce délai sans échange, l'assistant s'ouvre sur une nouvelle conversation. */
+const NEW_CONVERSATION_AFTER_MS = 6 * 3600 * 1000
 const SUGGESTIONS = [
   'Combien ai-je dépensé ce mois-ci ?',
   "J'ai payé 12,50 € chez le boucher aujourd'hui",
@@ -273,6 +275,11 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
         .select(CONVERSATION_FIELDS).order('updated_at', { ascending: false }).limit(1)
       const row = (data as ConversationRow[] | null)?.[0]
       if (cancelled || startedNewRef.current || busyRef.current || savingRef.current) return
+      // Plus de 6 heures sans échange : on repart d'une conversation neuve (l'ancienne reste dans « Conversations »)
+      if (row && Date.now() - new Date(row.updated_at).getTime() > NEW_CONVERSATION_AFTER_MS) {
+        if (conversationIdRef.current !== null || loadConversation().length) startNew()
+        return
+      }
       // La même conversation, déjà à jour ici : rien à recharger (évite d'écraser un enregistrement en cours)
       if (row && row.id === conversationIdRef.current && row.updated_at === syncedAtRef.current) return
       if (!row) {

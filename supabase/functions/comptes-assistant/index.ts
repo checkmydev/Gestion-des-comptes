@@ -16,7 +16,7 @@ const MODEL = 'claude-sonnet-5-5'
 /** Modèle des recherches de prix sur internet : comparer des produits et des formats demande plus de finesse. */
 const MODEL_PRICES = 'claude-opus-5-5'
 /** Une question qui demande de chercher des prix (où acheter, moins cher, promotions…). */
-const PRICE_QUESTION = /(prix|moins cher|plus cher|bon march|meilleur (magasin|endroit|prix)|o[uù] (acheter|trouver)|promo|d[ée]pliant|r[ée]duction|comparer? les magasins)/i
+const PRICE_QUESTION = /(moins cher|plus cher|bon march|meilleur (magasin|endroit|prix)|o[uù] (acheter|trouver)|promo|d[ée]pliant|compar\w* (les |des )?(magasins|prix)|(cherche|trouve|regarde)\w* (le |les )?prix|prix (sur internet|en ligne|ailleurs|chez|dans les magasins))/i
 const MAX_STEPS = 10 // garde-fou de la boucle d'agent
 
 // Coût : tarifs Anthropic en dollars par million de jetons (à revoir s'ils changent) ;
