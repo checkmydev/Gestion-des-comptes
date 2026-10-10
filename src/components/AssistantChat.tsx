@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'
 import {
   compressPhoto, draftGap, draftInvalid, draftSum, keptRows, readTicket, saveTicket, storeHandoff, takePendingPhoto, ticketText,
 } from '../lib/ticket'
-import { dictationSupported, speak, speechSupported, stopSpeaking, useDictation } from '../lib/voice'
+import { checkOnlineVoice, dictationSupported, speak, stopSpeaking, unlockAudio, useDictation } from '../lib/voice'
 
 /** Copie locale de la conversation en cours (affichage immédiat, et secours hors connexion). */
 const STORAGE_KEY = 'comptes.assistant.conversation'
@@ -256,6 +256,7 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
       }
       show(row)
     }
+    void checkOnlineVoice() // savoir tout de suite quelle voix lira les réponses
     const photo = takePendingPhoto()
     if (photo) void handlePhoto(photo)
     else void latest()
@@ -338,6 +339,7 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
   }
 
   function listen(i: number, text: string) {
+    unlockAudio()
     if (speaking === i) { stopSpeaking(); setSpeaking(null); return }
     setSpeaking(i)
     speak(text, () => setSpeaking((s) => (s === i ? null : s)))
@@ -346,6 +348,7 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
   async function send(text: string, voice = false) {
     const question = text.trim()
     if (!question || busyRef.current) return
+    if (voice) unlockAudio() // la réponse sera lue : le son doit être autorisé pendant le geste
     stopSpeaking(); setSpeaking(null)
     setBusy('question')
     setInput('')
@@ -379,7 +382,7 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
       await persist(final, id, sum)
       if (data?.modifie) dataChanged() // l'écran affiché derrière se recharge
       void reload() // l'assistant a pu créer des articles ou des magasins
-      if (voice && speechSupported()) { setSpeaking(final.length - 1); speak(reply, () => setSpeaking(null)) }
+      if (voice) { setSpeaking(final.length - 1); speak(reply, () => setSpeaking(null)) }
     } catch (e) {
       setMessages((m) => [...m, { role: 'assistant', content: (e as Error).message, error: true }])
     } finally {
@@ -538,7 +541,7 @@ export function AssistantChat({ panel = false, onClose }: { panel?: boolean; onC
                     <button className="btn btn-big" onClick={() => void send("Non, n'enregistre rien.", true)}>✗ Non</button>
                   </div>
                 )}
-                {m.role === 'assistant' && !m.error && speechSupported() && (
+                {m.role === 'assistant' && !m.error && (
                   <button className="btn-ghost listen-btn" onClick={() => listen(i, m.content)} aria-label={speaking === i ? 'Arrêter la lecture' : 'Écouter la réponse'}>
                     {speaking === i ? '⏹ Arrêter' : '🔊 Écouter'}
                   </button>

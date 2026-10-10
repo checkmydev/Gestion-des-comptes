@@ -10,3 +10,7 @@ export const supabase = createClient(url ?? 'http://localhost', key ?? 'missing'
   auth: { persistSession: true, autoRefreshToken: true, storageKey: 'comptes-auth' },
   db: { schema: 'comptes' },
 })
+
+/** Adresse et clé publique, pour les appels qui renvoient autre chose que du JSON (audio). */
+export const supabaseUrl = url ?? 'http://localhost'
+export const supabaseAnonKey = key ?? 'missing'

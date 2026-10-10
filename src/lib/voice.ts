@@ -49,6 +49,7 @@ export function useDictation(onFinal: (text: string) => void) {
     const Cls = recognitionClass()
     if (!Cls) { setError("La dictée n'est pas disponible sur cet appareil. Utilisez le micro du clavier pour dicter."); return }
     stopSpeaking()
+    unlockAudio()
     setError(null)
     setInterim('')
     finalText.current = ''
@@ -140,21 +141,55 @@ function score(v: SpeechSynthesisVoice): number {
   return s
 }
 
-export function readVoiceSettings(): { voiceURI: string | null; rate: number } {
-  try {
-    const rate = Number(localStorage.getItem(RATE_KEY))
-    return { voiceURI: localStorage.getItem(VOICE_KEY), rate: rate >= 0.6 && rate <= 1.5 ? rate : 1 }
-  } catch { return { voiceURI: null, rate: 1 } }
+export type VoiceEngine = 'enligne' | 'appareil'
+export interface VoiceSettings {
+  /** Voix naturelle en ligne (OpenAI) ou voix du téléphone. */
+  engine: VoiceEngine
+  /** Voix en ligne choisie. */
+  onlineVoice: string
+  /** Voix du téléphone choisie (null = la meilleure automatiquement). */
+  voiceURI: string | null
+  rate: number
 }
 
-export function saveVoiceSettings(v: { voiceURI?: string | null; rate?: number }) {
+const ENGINE_KEY = 'comptes.voiceEngine'
+const ONLINE_VOICE_KEY = 'comptes.onlineVoice'
+
+/** Voix en ligne proposées (OpenAI gpt-4o-mini-tts). */
+export const ONLINE_VOICES: { id: string; label: string }[] = [
+  { id: 'coral', label: 'Coral — femme, chaleureuse' },
+  { id: 'marin', label: 'Marin — femme, douce et naturelle' },
+  { id: 'sage', label: 'Sage — femme, calme' },
+  { id: 'shimmer', label: 'Shimmer — femme, claire' },
+  { id: 'cedar', label: 'Cedar — homme, posé et naturel' },
+  { id: 'ash', label: 'Ash — homme, chaleureux' },
+  { id: 'onyx', label: 'Onyx — homme, voix grave' },
+  { id: 'ballad', label: 'Ballad — homme, doux' },
+]
+
+export function readVoiceSettings(): VoiceSettings {
   try {
+    const rate = Number(localStorage.getItem(RATE_KEY))
+    const online = localStorage.getItem(ONLINE_VOICE_KEY)
+    return {
+      engine: localStorage.getItem(ENGINE_KEY) === 'appareil' ? 'appareil' : 'enligne',
+      onlineVoice: ONLINE_VOICES.some((v) => v.id === online) ? online! : 'coral',
+      voiceURI: localStorage.getItem(VOICE_KEY),
+      rate: rate >= 0.6 && rate <= 1.5 ? rate : 1,
+    }
+  } catch { return { engine: 'enligne', onlineVoice: 'coral', voiceURI: null, rate: 1 } }
+}
+
+export function saveVoiceSettings(v: Partial<VoiceSettings>) {
+  try {
+    if (v.engine !== undefined) localStorage.setItem(ENGINE_KEY, v.engine)
+    if (v.onlineVoice !== undefined) localStorage.setItem(ONLINE_VOICE_KEY, v.onlineVoice)
     if (v.voiceURI !== undefined) { if (v.voiceURI) localStorage.setItem(VOICE_KEY, v.voiceURI); else localStorage.removeItem(VOICE_KEY) }
     if (v.rate !== undefined) localStorage.setItem(RATE_KEY, String(v.rate))
   } catch { /* réglage non mémorisé */ }
 }
 
-/** Voix utilisée : celle choisie si elle existe encore, sinon la mieux notée. */
+/** Voix du téléphone utilisée : celle choisie si elle existe encore, sinon la mieux notée. */
 export function bestVoice(): SpeechSynthesisVoice | null {
   const voices = frenchVoices()
   const chosen = readVoiceSettings().voiceURI
@@ -174,15 +209,12 @@ function sentences(text: string): string[] {
 
 let speechRun = 0
 
-/** Lit un texte à voix haute ; onEnd est appelé à la fin (ou à l'arrêt). */
-export function speak(text: string, onEnd?: () => void, override?: { voiceURI?: string | null; rate?: number }) {
+/** Lecture avec une voix du téléphone. */
+function speakDevice(text: string, run: number, onEnd: (() => void) | undefined, s: VoiceSettings) {
   if (!speechSupported()) { onEnd?.(); return }
   const synth = window.speechSynthesis
   synth.cancel()
-  const run = ++speechRun
-  const settings = readVoiceSettings()
-  const voice = override?.voiceURI ? frenchVoices().find((v) => v.voiceURI === override.voiceURI) ?? bestVoice() : bestVoice()
-  const rate = override?.rate ?? settings.rate
+  const voice = (s.voiceURI && frenchVoices().find((v) => v.voiceURI === s.voiceURI)) || bestVoice()
   const chunks = sentences(speakable(text))
   let i = 0
   const next = () => {
@@ -191,7 +223,7 @@ export function speak(text: string, onEnd?: () => void, override?: { voiceURI?: 
     const u = new SpeechSynthesisUtterance(chunks[i++])
     u.lang = voice?.lang ?? 'fr-FR'
     if (voice) u.voice = voice
-    u.rate = rate
+    u.rate = s.rate
     u.pitch = 1
     u.onend = next
     u.onerror = () => { if (run === speechRun) onEnd?.() }
@@ -200,7 +232,106 @@ export function speak(text: string, onEnd?: () => void, override?: { voiceURI?: 
   next()
 }
 
+// ---------------------------------------------------------------------------
+// Voix en ligne : l'audio est fabriqué par la fonction serveur « comptes-voix ».
+// Un seul lecteur audio, « débloqué » au premier geste de l'utilisateur (sinon
+// iPhone et Android refusent de jouer un son arrivé plus tard).
+// ---------------------------------------------------------------------------
+let player: HTMLAudioElement | null = null
+const SILENCE = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu3UrAIwUdkRgQbFAZC1CQEwTJ9mjRvBA4UOLD8nKVOWfh+UlK3z/177OXrfOdKl7pyn3Xf//WreyTRUoAWgBgkOAGbZHBgG1OF6zM82DWbZaUmMBptgQhGjsyYqc9ae9XFz280948NMBWInljyzsNRFLPWdnZGWrddDsjK1unuSrVN9jJsK8KuQtQCtMBjCEtImISdNKJOopIpBFpNSMbIHCSRpRR5iakjTiyzLhchUUBwCgyKiweBv/7UsQbg8isVNoMPMjAAAA0gAAABEVFGmgqK////9bP/6XCykxBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'
+
+/** À appeler pendant un geste (toucher le micro, 🔊) pour autoriser la lecture qui suivra. */
+export function unlockAudio() {
+  if (typeof Audio === 'undefined') return
+  if (!player) player = new Audio()
+  if (player.dataset.unlocked) return
+  player.src = SILENCE
+  player.play().then(() => { player!.dataset.unlocked = '1' }, () => {})
+}
+
+const audioCache = new Map<string, string>()
+
+async function fetchOnlineAudio(text: string, s: VoiceSettings): Promise<string> {
+  const pace = s.rate < 0.95 ? 'lente' : s.rate > 1.05 ? 'rapide' : 'normale'
+  const key = `${s.onlineVoice}|${pace}|${text}`
+  const cached = audioCache.get(key)
+  if (cached) return cached
+  const { supabase, supabaseUrl, supabaseAnonKey } = await import('./supabase')
+  const { data } = await supabase.auth.getSession()
+  const res = await fetch(`${supabaseUrl}/functions/v1/comptes-voix`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: supabaseAnonKey, Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+    body: JSON.stringify({ text, voice: s.onlineVoice, pace }),
+  })
+  if (!res.ok || !(res.headers.get('Content-Type') ?? '').startsWith('audio/')) throw new Error(`voix en ligne indisponible (${res.status})`)
+  const url = URL.createObjectURL(await res.blob())
+  audioCache.set(key, url)
+  if (audioCache.size > 30) { const first = audioCache.keys().next().value!; URL.revokeObjectURL(audioCache.get(first)!); audioCache.delete(first) }
+  return url
+}
+
+/**
+ * La voix en ligne n'existe que si une clé est configurée sur le serveur. Vérifié une fois :
+ * la fonction répond 503 sans clé, 400 avec clé (le texte vide est refusé).
+ */
+let onlineAvailable: boolean | null = null
+let probing: Promise<boolean> | null = null
+export function checkOnlineVoice(): Promise<boolean> {
+  if (onlineAvailable !== null) return Promise.resolve(onlineAvailable)
+  probing ??= (async () => {
+    try {
+      const { supabase, supabaseUrl, supabaseAnonKey } = await import('./supabase')
+      const { data } = await supabase.auth.getSession()
+      const res = await fetch(`${supabaseUrl}/functions/v1/comptes-voix`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: supabaseAnonKey, Authorization: `Bearer ${data.session?.access_token ?? ''}` },
+        body: JSON.stringify({ text: '' }),
+      })
+      onlineAvailable = res.status === 400
+    } catch {
+      probing = null // pas de réseau : on réessaiera plus tard
+      return false
+    }
+    return onlineAvailable
+  })()
+  return probing
+}
+
+/** Dernière erreur de la voix en ligne (affichée dans les Paramètres). */
+export let lastOnlineError: string | null = null
+
+/**
+ * Lit un texte à voix haute ; onEnd est appelé à la fin (ou à l'arrêt).
+ * Voix en ligne par défaut, voix du téléphone si elle est choisie ou en cas de souci.
+ */
+export function speak(text: string, onEnd?: () => void, override?: Partial<VoiceSettings>) {
+  const s = { ...readVoiceSettings(), ...override }
+  stopSpeaking()
+  const run = speechRun
+  const clean = speakable(text)
+  if (!clean) { onEnd?.(); return }
+  if (s.engine !== 'enligne' || onlineAvailable === false || (typeof navigator !== 'undefined' && !navigator.onLine)) { speakDevice(text, run, onEnd, s); return }
+  if (!player) player = new Audio()
+  const p = player
+  checkOnlineVoice().then((ok) => {
+    if (!ok) throw new Error('voix en ligne non configurée')
+    return fetchOnlineAudio(clean, s)
+  }).then((url) => {
+    if (run !== speechRun) return
+    lastOnlineError = null
+    p.onended = () => { if (run === speechRun) onEnd?.() }
+    p.onerror = () => { if (run === speechRun) speakDevice(text, run, onEnd, s) }
+    p.src = url
+    p.playbackRate = 1
+    p.play().catch(() => { if (run === speechRun) speakDevice(text, run, onEnd, s) })
+  }).catch((e: Error) => {
+    lastOnlineError = e.message
+    if (run === speechRun) speakDevice(text, run, onEnd, s)
+  })
+}
+
 export function stopSpeaking() {
   speechRun++
+  if (player && !player.paused) player.pause()
   if (speechSupported()) window.speechSynthesis.cancel()
 }

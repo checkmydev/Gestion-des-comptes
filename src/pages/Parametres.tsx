@@ -9,38 +9,69 @@ import type { FormSpec } from './Global'
 import { ProductIcon } from '../components/ProductIcon'
 import { productIcon } from '../lib/icons'
 import { readTextSize, saveTextSize, TEXT_SIZES, type TextSize } from '../lib/textsize'
-import { bestVoice, frenchVoices, onVoicesChanged, readVoiceSettings, saveVoiceSettings, speak, speechSupported, stopSpeaking } from '../lib/voice'
+import { bestVoice, checkOnlineVoice, frenchVoices, lastOnlineError, ONLINE_VOICES, onVoicesChanged, readVoiceSettings, saveVoiceSettings, speak, stopSpeaking, unlockAudio, type VoiceSettings as VoiceSettingsT } from '../lib/voice'
 
 const RATES = [{ value: 0.85, label: 'Lente' }, { value: 1, label: 'Normale' }, { value: 1.15, label: 'Rapide' }]
-const SAMPLE = "Bonjour ! Ce mois-ci, vous avez dépensé 128,29 € en courses. C'est un peu moins que le mois dernier."
+const SAMPLE = "Bonjour ! Ce mois-ci, vous avez dépensé 128,29 € en courses. C'est un peu moins que le mois dernier, bravo."
 
-/** Choix de la voix qui lit les réponses de l'assistant (propre à chaque appareil). */
+/** Voix qui lit les réponses de l'assistant (propre à chaque appareil). */
 function VoiceSettings() {
   const [voices, setVoices] = useState(frenchVoices)
-  const [settings, setSettings] = useState(readVoiceSettings)
+  const [settings, setSettings] = useState<VoiceSettingsT>(readVoiceSettings)
+  const [playing, setPlaying] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
+  /** Voix naturelle en ligne disponible (clé configurée sur le serveur) ? */
+  const [online, setOnline] = useState<boolean | null>(null)
+  useEffect(() => { void checkOnlineVoice().then(setOnline) }, [])
+  const engine = online ? settings.engine : 'appareil'
   useEffect(() => onVoicesChanged(() => setVoices(frenchVoices())), [])
   useEffect(() => () => stopSpeaking(), [])
-  if (!speechSupported()) return null
-  const current = settings.voiceURI ?? bestVoice()?.voiceURI ?? ''
-  const update = (v: { voiceURI?: string | null; rate?: number }) => {
+  const deviceVoice = settings.voiceURI ?? bestVoice()?.voiceURI ?? ''
+
+  function play(s: VoiceSettingsT) {
+    unlockAudio()
+    setNotice(null)
+    setPlaying(true)
+    speak(SAMPLE, () => {
+      setPlaying(false)
+      if (s.engine === 'enligne' && lastOnlineError) setNotice("La voix en ligne n'a pas répondu : c'est la voix du téléphone qui a lu l'exemple. Vérifiez la connexion internet.")
+    }, s)
+  }
+  const update = (v: Partial<VoiceSettingsT>) => {
     saveVoiceSettings(v)
     const next = { ...settings, ...v }
     setSettings(next)
-    speak(SAMPLE, undefined, { voiceURI: next.voiceURI ?? current, rate: next.rate })
+    play(next)
   }
+
   return (
     <section className="card stack" style={{ gap: 10 }}>
       <h2>Voix de l'assistant</h2>
-      {voices.length === 0
-        ? <p className="muted small" style={{ margin: 0 }}>Aucune voix française trouvée sur cet appareil. Sur Android, installez « Synthèse vocale Google » ; sur iPhone, Réglages → Accessibilité → Contenu énoncé → Voix → Français.</p>
-        : (
-          <label className="field">
-            Voix
-            <select value={current} onChange={(e) => update({ voiceURI: e.target.value })}>
-              {voices.map((v) => <option key={v.voiceURI} value={v.voiceURI}>{v.name.replace(/^(Microsoft|Google)s+/, '')}{v.localService ? '' : ' (en ligne)'}</option>)}
-            </select>
-          </label>
-        )}
+      {online && <div className="chips" role="radiogroup" aria-label="Type de voix">
+        <button role="radio" aria-checked={settings.engine === 'enligne'} className={`chip ${settings.engine === 'enligne' ? 'selected' : ''}`} onClick={() => update({ engine: 'enligne' })}>
+          {settings.engine === 'enligne' && '✓ '}Voix naturelle
+        </button>
+        <button role="radio" aria-checked={settings.engine === 'appareil'} className={`chip ${settings.engine === 'appareil' ? 'selected' : ''}`} onClick={() => update({ engine: 'appareil' })}>
+          {settings.engine === 'appareil' && '✓ '}Voix du téléphone
+        </button>
+      </div>}
+      {engine === 'enligne' ? (
+        <label className="field">
+          Voix
+          <select value={settings.onlineVoice} onChange={(e) => update({ onlineVoice: e.target.value })}>
+            {ONLINE_VOICES.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
+          </select>
+        </label>
+      ) : voices.length === 0 ? (
+        <p className="muted small" style={{ margin: 0 }}>Aucune voix française trouvée sur cet appareil. Sur Android, installez « Synthèse vocale Google » ; sur iPhone, Réglages → Accessibilité → Contenu énoncé → Voix → Français.</p>
+      ) : (
+        <label className="field">
+          Voix du téléphone
+          <select value={deviceVoice} onChange={(e) => update({ voiceURI: e.target.value })}>
+            {voices.map((v) => <option key={v.voiceURI} value={v.voiceURI}>{v.name.replace(/^(Microsoft|Google)\s+/, '')}{v.localService ? '' : ' (en ligne)'}</option>)}
+          </select>
+        </label>
+      )}
       <div className="chips" role="radiogroup" aria-label="Vitesse de lecture">
         {RATES.map((r) => (
           <button key={r.value} role="radio" aria-checked={settings.rate === r.value} className={`chip ${settings.rate === r.value ? 'selected' : ''}`} onClick={() => update({ rate: r.value })}>
@@ -48,8 +79,13 @@ function VoiceSettings() {
           </button>
         ))}
       </div>
-      <button className="btn" onClick={() => speak(SAMPLE, undefined, { voiceURI: current, rate: settings.rate })}>▶ Écouter un exemple</button>
-      <p className="muted small" style={{ margin: 0 }}>Choisissez la voix la plus agréable : chaque choix lit un exemple. Les voix « en ligne », « Google » ou « Natural » sont souvent les plus naturelles. Réglage propre à cet appareil.</p>
+      <button className="btn" onClick={() => (playing ? (stopSpeaking(), setPlaying(false)) : play(settings))}>{playing ? '⏹ Arrêter' : '▶ Écouter un exemple'}</button>
+      {notice && <p className="alert small" style={{ margin: 0 }}>{notice}</p>}
+      <p className="muted small" style={{ margin: 0 }}>
+        {engine === 'enligne'
+          ? 'La voix naturelle est fabriquée en ligne (quelques centimes par mois). Sans internet, la voix du téléphone prend le relais.'
+          : 'Les voix « en ligne », « Google » ou « Natural » sont souvent les plus agréables.'} Réglage propre à cet appareil.
+      </p>
     </section>
   )
 }
