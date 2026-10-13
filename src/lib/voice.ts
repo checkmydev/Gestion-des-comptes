@@ -31,19 +31,51 @@ const ERRORS: Record<string, string> = {
 }
 
 /**
- * Dictée : start() écoute, le texte s'affiche au fur et à mesure (interim),
- * puis onFinal reçoit la phrase complète quand l'utilisateur s'arrête de parler.
+ * Dictée : start() écoute, le texte s'affiche au fur et à mesure (interim), puis onFinal reçoit
+ * tout ce qui a été dit. Les pauses ne coupent pas la dictée : elle s'arrête après quelques secondes
+ * de silence, au bout d'une minute, ou quand l'utilisateur touche « Envoyer ».
  */
+const SILENCE_MS = 4000 // silence après avoir parlé
+const SILENCE_BEFORE_MS = 8000 // silence avant d'avoir commencé à parler
+const MAX_MS = 60000 // durée maximale d'une dictée
+
+/** Assemble les morceaux reconnus (Android répète parfois tout le début dans chaque morceau). */
+function joinFinals(parts: string[]): string {
+  let out = ''
+  for (const raw of parts) {
+    const p = raw.trim()
+    if (!p) continue
+    if (out && p.toLowerCase().startsWith(out.toLowerCase())) out = p
+    else if (!out.toLowerCase().endsWith(p.toLowerCase())) out = out ? `${out} ${p}` : p
+  }
+  return out
+}
+
 export function useDictation(onFinal: (text: string) => void) {
   const [listening, setListening] = useState(false)
   const [interim, setInterim] = useState('')
   const [error, setError] = useState<string | null>(null)
   const rec = useRef<Recognition | null>(null)
-  const finalText = useRef('')
   const cb = useRef(onFinal)
   cb.current = onFinal
+  /** État d'une dictée en cours (peut couvrir plusieurs sessions du micro). */
+  const run = useRef<{ committed: string; current: string; startedAt: number; lastSpeech: number; done: boolean; timer: number } | null>(null)
 
-  const stop = useCallback(() => { rec.current?.stop() }, [])
+  const finish = useCallback(() => {
+    const st = run.current
+    if (!st || st.done) return
+    st.done = true
+    window.clearInterval(st.timer)
+    try { rec.current?.stop() } catch { /* déjà arrêté */ }
+    rec.current = null
+    setListening(false)
+    setInterim('')
+    const text = joinFinals([st.committed, st.current])
+    run.current = null
+    if (text) cb.current(text)
+  }, [])
+
+  const stop = useCallback(() => finish(), [finish])
 
   const start = useCallback(() => {
     const Cls = recognitionClass()
@@ -52,33 +84,52 @@ export function useDictation(onFinal: (text: string) => void) {
     unlockAudio()
     setError(null)
     setInterim('')
-    finalText.current = ''
-    const r = new Cls()
-    r.lang = 'fr-BE'
-    r.continuous = false
-    r.interimResults = true
-    r.onresult = (e) => {
-      let live = ''
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const res = e.results[i]
-        if (res.isFinal) finalText.current += res[0].transcript
-        else live += res[0].transcript
-      }
-      setInterim((finalText.current + live).trim())
-    }
-    r.onerror = (e) => { if (e.error !== 'aborted') setError(ERRORS[e.error] ?? 'La dictée a été interrompue. Réessayez.') }
-    r.onend = () => {
-      setListening(false)
-      rec.current = null
-      const text = finalText.current.trim()
-      setInterim('')
-      if (text) cb.current(text)
-    }
-    rec.current = r
-    try { r.start(); setListening(true) } catch { setError('La dictée n\'a pas pu démarrer. Réessayez.') }
-  }, [])
+    const now = Date.now()
+    const st = { committed: '', current: '', startedAt: now, lastSpeech: now, done: false, timer: 0 }
+    run.current = st
+    // Arrêt automatique : silence prolongé ou durée maximale
+    st.timer = window.setInterval(() => {
+      const t = Date.now()
+      const spoken = Boolean(joinFinals([st.committed, st.current]))
+      if (t - st.startedAt > MAX_MS || t - st.lastSpeech > (spoken ? SILENCE_MS : SILENCE_BEFORE_MS)) finish()
+    }, 300)
 
-  useEffect(() => () => rec.current?.abort(), [])
+    const session = () => {
+      const r = new Cls()
+      r.lang = 'fr-BE'
+      r.continuous = true
+      r.interimResults = true
+      r.onresult = (e) => {
+        const finals: string[] = []
+        let live = ''
+        for (let i = 0; i < e.results.length; i++) {
+          const res = e.results[i]
+          if (res.isFinal) finals.push(res[0].transcript)
+          else live += res[0].transcript
+        }
+        st.current = joinFinals(finals)
+        st.lastSpeech = Date.now()
+        setInterim(joinFinals([st.committed, st.current, live]))
+      }
+      r.onerror = (e) => {
+        if (e.error === 'no-speech' || e.error === 'aborted') return // le minuteur de silence décide
+        setError(ERRORS[e.error] ?? 'La dictée a été interrompue. Réessayez.')
+        finish()
+      }
+      // Le téléphone coupe parfois le micro de lui-même : on relance tant que la dictée n'est pas finie
+      r.onend = () => {
+        if (st.done) return
+        st.committed = joinFinals([st.committed, st.current])
+        st.current = ''
+        try { session() } catch { finish() }
+      }
+      rec.current = r
+      r.start()
+    }
+    try { session(); setListening(true) } catch { setError("La dictée n'a pas pu démarrer. Réessayez."); finish() }
+  }, [finish])
+
+  useEffect(() => () => { if (run.current) { run.current.done = true; window.clearInterval(run.current.timer) } rec.current?.abort() }, [])
   return { listening, interim, error, start, stop, clearError: () => setError(null) }
 }
 

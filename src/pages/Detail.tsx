@@ -57,6 +57,11 @@ export default function Detail() {
         const rows = byCategory.get(c.id) ?? []
         const sub = rows.reduce((a, p) => a + Number(p.amount), 0)
         const status = budgetStatus(sub, c.monthly_budget)
+        // Légumes : poids en kg et prix au kilo (donné, sinon calculé), total des kilos
+        const kgOf = (p: Purchase) => (p.quantity_g ? Number(p.quantity_g) / 1000 : null)
+        const ppkOf = (p: Purchase) => (p.price_per_kg != null ? Number(p.price_per_kg) : kgOf(p) ? Number(p.amount) / kgOf(p)! : null)
+        const weighedRows = rows.filter((p) => kgOf(p))
+        const totalKg = weighedRows.reduce((a, p) => a + kgOf(p)!, 0)
         return (
           <section key={c.id} className="card">
             <div className="spread">
@@ -75,25 +80,32 @@ export default function Detail() {
                   <thead>
                     <tr>
                       <th>Article</th>
-                      <th>Magasin + date</th>
-                      {c.weighed && <><th className="num">Qté (g)</th><th className="num">€/kg</th></>}
+                      {c.weighed && <><th className="num">Poids<br />(kg)</th><th className="num">€/kg</th></>}
                       {c.counted && <th className="num">Nbre</th>}
-                      <th className="num">Promo</th>
                       <th className="num">Montant</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((p) => (
                       <tr key={p.id} className="clickable" onClick={() => setEditing(p)}>
-                        <td><span className="pname"><ProductIcon name={itemById(p.item_id)?.name ?? ''} category={c.name} icon={itemById(p.item_id)?.icon} />{itemById(p.item_id)?.name}</span>{!c.counted && p.units && Number(p.units) > 1 ? <span className="muted"> ×{num(p.units)}</span> : null}{p.note && <div className="muted small">{p.note}</div>}</td>
-                        <td>{storeDate(storeById(p.store_id)?.name, p.purchased_on)}</td>
-                        {c.weighed && <><td className="num">{num(p.quantity_g)}</td><td className="num">{num(p.price_per_kg)}</td></>}
+                        <td><span className="pname"><ProductIcon name={itemById(p.item_id)?.name ?? ''} category={c.name} icon={itemById(p.item_id)?.icon} />{itemById(p.item_id)?.name}</span>{!c.counted && p.units && Number(p.units) > 1 ? <span className="muted"> ×{num(p.units)}</span> : null}<div className="muted small">{storeDate(storeById(p.store_id)?.name, p.purchased_on)}{p.note ? ` · ${p.note}` : ''}</div></td>
+                        {c.weighed && <>
+                          <td className="num">{kgOf(p) ? num(Math.round(kgOf(p)! * 1000) / 1000) : <span className="muted">—</span>}</td>
+                          <td className="num">{ppkOf(p) != null ? num(Math.round(ppkOf(p)! * 100) / 100) : <span className="muted">—</span>}</td>
+                        </>}
                         {c.counted && <td className="num">{num(p.units ?? 1)}</td>}
-                        <td className="num">{p.promo_pct ? `${num(p.promo_pct)} %` : ''}</td>
-                        <td className="num">{eur(p.amount)}</td>
+                        <td className="num">{eur(p.amount)}{p.promo_pct ? <div className="muted small">promo {num(p.promo_pct)} %</div> : null}</td>
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot>
+                    <tr>
+                      <td>Total{c.weighed && rows.length > weighedRows.length ? <div className="muted small">{rows.length - weighedRows.length} achat{rows.length - weighedRows.length > 1 ? 's' : ''} sans poids</div> : null}</td>
+                      {c.weighed && <><td className="num">{weighedRows.length ? num(Math.round(totalKg * 1000) / 1000) : '—'}</td><td className="num">{totalKg ? num(Math.round((weighedRows.reduce((a, p) => a + Number(p.amount), 0) / totalKg) * 100) / 100) : ''}</td></>}
+                      {c.counted && <td className="num">{num(rows.reduce((a, p) => a + Number(p.units ?? 1), 0))}</td>}
+                      <td className="num">{eur(sub)}</td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             )}

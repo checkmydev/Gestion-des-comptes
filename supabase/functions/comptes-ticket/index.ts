@@ -26,7 +26,8 @@ const INSTRUCTIONS = `Tu lis la photo d'un ticket de caisse belge (Delhaize, Lid
 Règles de lecture :
 - Une ligne par article acheté. Ignore les lignes de total, sous-total, TVA, mode de paiement, rendu, points de fidélité, numéros de caisse.
 - « montant » est ce qui a été réellement payé pour la ligne, réductions déduites. Une ligne de réduction (« Réduction », « Promo », « Lidl Plus », « -0,50 », « 2e à -50 % »…) se déduit de l'article qu'elle concerne (en général celui juste au-dessus) : mets le montant de la remise dans « remise » et n'en fais pas une ligne à part.
-- Articles pesés (« 0,812 kg x 1,99 €/kg ») : poids_g = 812, prix_kg = 1.99. Articles multiples (« 2 x 1,49 ») : nombre = 2 et montant = le total de la ligne.
+- Articles pesés (« 0,812 kg x 1,99 €/kg ») : poids_g = 812, prix_kg = 1.99.
+- Fruits et légumes emballés (catégorie pesée) dont le poids figure dans le nom (« FRAISES 650G », « HARICOTS 1KG », « POMMES 1,5 KG », « TOMATES 500 G ») : poids_g = ce poids multiplié par le nombre d'unités (650, 1000, 1500…), et prix_kg = montant ÷ (poids_g / 1000), arrondi au centime. Un volume (« 212 ML », « 1 L ») n'est pas un poids : laisse poids_g et prix_kg à null. Articles multiples (« 2 x 1,49 ») : nombre = 2 et montant = le total de la ligne.
 - Consignes de bouteilles et sacs : catégorie Divers, article « Consigne » ou « Sac ».
 - « article » : un nom court et générique en français, comme une personne l'écrirait (« Yaourt nature », pas « DANONE NAT 4X125G »). Si un article de la liste fournie correspond au même produit, reprends EXACTEMENT son nom.
 - « categorie » : une des catégories fournies. Fruits et légumes frais → la catégorie pesée (Légumes).
